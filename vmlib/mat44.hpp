@@ -68,7 +68,7 @@ Mat44f operator*( Mat44f const& aLeft, Mat44f const& aRight ) noexcept
 		0.f, 0.f, 0.f, 0.f,
 		0.f, 0.f, 0.f, 0.f
 	} };
-	
+
 	//loop over each element and perform the row/column opperations
 	for (int i = 0; i < 4; i++) {
 		for (int j = 0; j < 4; j++) {
@@ -174,13 +174,19 @@ Mat44f make_scaling( float aSX, float aSY, float aSZ ) noexcept
 inline
 Mat44f make_perspective_projection( float aFovInRadians, float aAspect, float aNear, float aFar ) noexcept
 {
-	//TODO: your implementation goes here
-	//TODO: remove the following when you start your implementation
-	(void)aFovInRadians; // Avoid warnings about unused arguments until the function
-	(void)aAspect;       // is properly implemented.
-	(void)aNear;
-	(void)aFar;
-	return kIdentity44f;
+	const float s { 1.f / tan( aFovInRadians / 2.f ) };
+	const float sx{ s / aAspect };
+	const float sy{ s };
+
+	const float a{ -((aFar + aNear) / (aFar - aNear)) };
+	const float b{ -2 * ((aFar * aNear) / (aFar - aNear)) };
+
+	return {
+		sx,  0,  0,  0,
+		 0, sy,  0,  0,
+		 0,  0,  a,  b,
+		 0,  0, -1,  0,
+	};
 }
 
 #endif // MAT44_HPP_E7187A26_469E_48AD_A3D2_63150F05A4CA

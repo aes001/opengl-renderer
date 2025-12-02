@@ -174,7 +174,7 @@ Mat44f make_scaling( float aSX, float aSY, float aSZ ) noexcept
 inline
 Mat44f make_perspective_projection( float aFovInRadians, float aAspect, float aNear, float aFar ) noexcept
 {
-	const float s { 1.f / tan( aFovInRadians / 2.f ) };
+	const float s { 1.f / static_cast<float>(tan( aFovInRadians / 2.f )) };
 	const float sx{ s / aAspect };
 	const float sy{ s };
 

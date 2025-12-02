@@ -111,52 +111,64 @@ Mat44f transpose( Mat44f const& aM ) noexcept
 inline
 Mat44f make_rotation_x( float aAngle ) noexcept
 {
-	//TODO: your implementation goes here
-	//TODO: remove the following when you start your implementation
-	(void)aAngle; // Avoid warnings about unused arguments until the function
-	              // is properly implemented.
-	return kIdentity44f;
+	Mat44f R = kIdentity44f;
+
+	R[1, 1] = cos(aAngle);
+	R[1, 2] = -sin(aAngle);
+	R[2, 1] = sin(aAngle);
+	R[2, 2] = cos(aAngle);
+
+	return R;
 }
 
 
 inline
 Mat44f make_rotation_y( float aAngle ) noexcept
 {
-	//TODO: your implementation goes here
-	//TODO: remove the following when you start your implementation
-	(void)aAngle; // Avoid warnings about unused arguments until the function
-	              // is properly implemented.
-	return kIdentity44f;
+	Mat44f R = kIdentity44f;
+
+	R[0, 0] = cos(aAngle);
+	R[0, 2] = sin(aAngle);
+	R[2, 0] = -sin(aAngle);
+	R[2, 2] = cos(aAngle);
+
+	return R;
 }
 
 inline
 Mat44f make_rotation_z( float aAngle ) noexcept
 {
-	//TODO: your implementation goes here
-	//TODO: remove the following when you start your implementation
-	(void)aAngle; // Avoid warnings about unused arguments until the function
-	              // is properly implemented.
-	return kIdentity44f;
+	Mat44f R = kIdentity44f;
+
+	R[0, 0] = cos(aAngle);
+	R[0, 1] = -sin(aAngle);
+	R[1, 0] = sin(aAngle);
+	R[1, 1] = cos(aAngle);
+
+	return R;
 }
 
 inline
 Mat44f make_translation( Vec3f aTranslation ) noexcept
 {
-	//TODO: your implementation goes here
-	//TODO: remove the following when you start your implementation
-	(void)aTranslation; // Avoid warnings about unused arguments until the function
-	                    // is properly implemented.
-	return kIdentity44f;
+	Mat44f R = kIdentity44f;
+
+	R[3, 0] = aTranslation[0];
+	R[3, 1] = aTranslation[1];
+	R[3, 2] = aTranslation[2];
+
+	return R;
 }
 inline
 Mat44f make_scaling( float aSX, float aSY, float aSZ ) noexcept
 {
-	//TODO: your implementation goes here
-	//TODO: remove the following when you start your implementation
-	(void)aSX;  // Avoid warnings about unused arguments until the function
-	(void)aSY;  // is properly implemented.
-	(void)aSZ;
-	return kIdentity44f;
+	Mat44f R = kIdentity44f;
+
+	R[0, 0] = aSX;
+	R[1, 1] = aSY;
+	R[2, 2] = aSZ;
+
+	return R;
 }
 
 inline

@@ -62,21 +62,34 @@ constexpr Mat44f kIdentity44f = { {
 constexpr
 Mat44f operator*( Mat44f const& aLeft, Mat44f const& aRight ) noexcept
 {
-	//TODO: your implementation goes here
-	//TODO: remove the following when you start your implementation
-	(void)aLeft;   // Avoid warnings about unused arguments until the function
-	(void)aRight;  // is properly implemented.
-	return kIdentity44f;
+	Mat44f R = { {
+		0.f, 0.f, 0.f, 0.f,
+		0.f, 0.f, 0.f, 0.f,
+		0.f, 0.f, 0.f, 0.f,
+		0.f, 0.f, 0.f, 0.f
+	} };
+	
+	//loop over each element and perform the row/column opperations
+	for (int i = 0; i < 4; i++) {
+		for (int j = 0; j < 4; j++) {
+			for (int k = 0; k < 4; k++) {
+				R[i, j] = R[i, j] + (aLeft[i, k] * aRight[k, j]);
+			}
+		}
+	}
+
+	return R;
 }
 
 constexpr
 Vec4f operator*( Mat44f const& aLeft, Vec4f const& aRight ) noexcept
 {
-	//TODO: your implementation goes here
-	//TODO: remove the following when you start your implementation
-	(void)aLeft;   // Avoid warnings about unused arguments until the function
-	(void)aRight;  // is properly implemented.
-	return { 0.f, 0.f, 0.f, 0.f };
+	float x = (aLeft[0, 0] * aRight[0]) + (aLeft[0, 1] * aRight[1]) + (aLeft[0, 2] * aRight[2]) + (aLeft[0, 3] * aRight[3]);
+	float y = (aLeft[1, 0] * aRight[0]) + (aLeft[1, 1] * aRight[1]) + (aLeft[1, 2] * aRight[2]) + (aLeft[1, 3] * aRight[3]);
+	float z = (aLeft[2, 0] * aRight[0]) + (aLeft[2, 1] * aRight[1]) + (aLeft[2, 2] * aRight[2]) + (aLeft[2, 3] * aRight[3]);
+	float w = (aLeft[3, 0] * aRight[0]) + (aLeft[3, 1] * aRight[1]) + (aLeft[3, 2] * aRight[2]) + (aLeft[3, 3] * aRight[3]);
+
+	return { x, y, z, w };
 }
 
 // Functions:

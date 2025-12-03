@@ -44,4 +44,27 @@ TEST_CASE( "Perspective projection", "[mat44]" )
 		REQUIRE_THAT( (proj[3,2]), WithinAbs( -1.f, kEps_ ) );
 		REQUIRE_THAT( (proj[3,3]), WithinAbs( 0.f, kEps_ ) );
 	}
+
+	SECTION("Extreme")
+	{
+		auto const proj = make_perspective_projection(
+			180.f * std::numbers::pi_v<float> / 180.f,
+			1280 / float(2),
+			0.1f, 0.2f
+		);
+
+		Mat44f expected = { {
+			0.000000f, 0.000000f, 0.000000f, 0.000000f,
+			0.000000f, 0.000000f, 0.000000f, 0.000000f,
+			0.000000f, 0.000000f, -3.f, -0.4f,
+			0.000000f, 0.000000f, -1.000000f, 0.000000f
+		} };
+
+		//check result matches expected result
+		for (int i = 0; i < 4; i++) {
+			for (int j = 0; j < 4; j++) {
+				REQUIRE_THAT((proj[i, j]), WithinAbs(expected[i, j], kEps_));
+			}
+		}
+	}
 }

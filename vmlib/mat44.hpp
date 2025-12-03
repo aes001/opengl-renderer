@@ -127,10 +127,10 @@ Mat44f make_rotation_y( float aAngle ) noexcept
 {
 	Mat44f R = kIdentity44f;
 
-	R[0, 0] = cos(aAngle);
-	R[0, 2] = sin(aAngle);
-	R[2, 0] = -sin(aAngle);
-	R[2, 2] = cos(aAngle);
+	R[0, 0] = (float)cos(aAngle);
+	R[0, 2] = (float)sin(aAngle);
+	R[2, 0] = -(float)sin(aAngle);
+	R[2, 2] = (float)cos(aAngle);
 
 	return R;
 }
@@ -140,10 +140,10 @@ Mat44f make_rotation_z( float aAngle ) noexcept
 {
 	Mat44f R = kIdentity44f;
 
-	R[0, 0] = cos(aAngle);
-	R[0, 1] = -sin(aAngle);
-	R[1, 0] = sin(aAngle);
-	R[1, 1] = cos(aAngle);
+	R[0, 0] = (float)cos(aAngle);
+	R[0, 1] = -(float)sin(aAngle);
+	R[1, 0] = (float)sin(aAngle);
+	R[1, 1] = (float)cos(aAngle);
 
 	return R;
 }
@@ -153,9 +153,9 @@ Mat44f make_translation( Vec3f aTranslation ) noexcept
 {
 	Mat44f R = kIdentity44f;
 
-	R[3, 0] = aTranslation[0];
-	R[3, 1] = aTranslation[1];
-	R[3, 2] = aTranslation[2];
+	R[0, 3] = aTranslation[0];
+	R[1, 3] = aTranslation[1];
+	R[2, 3] = aTranslation[2];
 
 	return R;
 }

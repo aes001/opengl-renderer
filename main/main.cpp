@@ -423,7 +423,7 @@ namespace
 		{
 			if(state.pressedKeys[GLFW_KEY_LEFT_SHIFT])
 				state.speedMod = 10;
-			else if(state.pressedKeys[GLFW_MOD_CONTROL])
+			else if(state.pressedKeys[GLFW_KEY_LEFT_CONTROL])
 				state.speedMod = 0.5;
 			else
 				state.speedMod = 1;

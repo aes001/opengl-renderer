@@ -19,6 +19,7 @@
 
 #include "defaults.hpp"
 #include "ModelObject.hpp"
+#include "LookAt.hpp"
 
 
 namespace
@@ -128,7 +129,7 @@ int main() try
 
 	// Initial camera set up
 	state.camControl.cameraPos = {0.f, 0.f, -10.f};
-	//state.camControl.cameraDirection = {0.f, 0.f, -1.f};
+	state.camControl.cameraDirection = {0.f, 0.f, -1.f};
 	//state.camControl.cameraRight = {}
 	//state.camControl.cameraUp;
 	//state.camControl.yaw = -90.f;
@@ -280,9 +281,12 @@ int main() try
 
 		Mat44f Rx = make_rotation_x( state.camControl.pitch );
 		Mat44f Ry = make_rotation_y( state.camControl.yaw );
-		Mat44f T = make_translation( {0.f, 0.f, -10.f });
+		Mat44f T = make_translation( -state.camControl.cameraPos);
 
-		Mat44f world2camera = Rx * Ry * T;
+		Mat44f view = MakeLookAt(state.camControl.cameraPos, state.camControl.cameraDirection, state.camControl.cameraUp, state.camControl.cameraRight);
+
+		//Mat44f world2camera = Rx * Ry * T;
+		Mat44f world2camera = view;
 		//Mat44f world2camera = make_translation( {0.f, 0.f, -10.f });
 		Mat44f projection = make_perspective_projection(
 			60.f * std::numbers::pi_v<float> / 180.f,
@@ -344,7 +348,26 @@ namespace
 		}
 
 		// Well we're gonna need you anyway
-		auto* state = static_cast<State_*>(glfwGetWindowUserPointer( aWindow ));
+		if (auto* state = static_cast<State_*>(glfwGetWindowUserPointer(aWindow))) 
+		{
+			if (state->camControl.cameraActive)
+			{
+				if (GLFW_KEY_W == aKey && (aAction == GLFW_PRESS || aAction == GLFW_REPEAT))
+					state->camControl.cameraPos += state->camControl.cameraDirection * kMovementPerSecond_;
+				if (GLFW_KEY_S == aKey && (aAction == GLFW_PRESS || aAction == GLFW_REPEAT))
+					state->camControl.cameraPos -= state->camControl.cameraDirection * kMovementPerSecond_;
+				if (GLFW_KEY_A == aKey && (aAction == GLFW_PRESS || aAction == GLFW_REPEAT))
+					state->camControl.cameraPos -= normalize(cross(state->camControl.cameraDirection, state->camControl.cameraUp)) * kMovementPerSecond_;
+				if (GLFW_KEY_D == aKey && (aAction == GLFW_PRESS || aAction == GLFW_REPEAT))
+					state->camControl.cameraPos += normalize(cross(state->camControl.cameraDirection, state->camControl.cameraUp)) * kMovementPerSecond_;
+				if (GLFW_KEY_E == aKey && (aAction == GLFW_PRESS || aAction == GLFW_REPEAT))
+					state->camControl.cameraPos -= state->camControl.cameraUp * kMovementPerSecond_;
+				if (GLFW_KEY_Q == aKey && (aAction == GLFW_PRESS || aAction == GLFW_REPEAT))
+					state->camControl.cameraPos += state->camControl.cameraUp * kMovementPerSecond_;
+
+			}
+
+		}
 	}
 
 
@@ -365,6 +388,8 @@ namespace
 				float tempPitch = state->camControl.pitch + dy*kMouseSensitivity_;
 
 				state->camControl.pitch = std::clamp(tempPitch, minPitch, maxPitch);
+
+				updateCamera;
 			}
 
 			state->camControl.lastX = float(aX);
@@ -393,6 +418,13 @@ namespace
 		// Update the camera state fields here except camera position
 		// updating the position will be on the callback_key_
 		// this should be direction and etc.
+		
+		cam.cameraRight = normalize(cross({ 0.f, 1.f, 0.f }, cam.cameraDirection)); //i dont know why it wont let me use cross product :D
+		cam.cameraUp = cross(cam.cameraDirection, cam.cameraRight);
+
+		cam.cameraDirection = normalize({ cos(cam.yaw) * cos(cam.pitch), sin(cam.pitch), sin(cam.yaw) * cos(cam.pitch) });
+
+
 	}
 
 

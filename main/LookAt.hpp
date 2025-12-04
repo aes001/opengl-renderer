@@ -11,7 +11,7 @@
 
 
 
-Mat44f MakeLookAt( const Vec3f& pos, const Vec3f& target, const Vec3f& up );
+Mat44f MakeLookAt(const Vec3f& P, const Vec3f& D, const Vec3f& U, const Vec3f& R);
 
 
 

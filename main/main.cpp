@@ -43,12 +43,14 @@ namespace
 
 	constexpr float kMovementPerSecond_ = 5.f; // units per second
 	constexpr float kMouseSensitivity_ = 0.005f; // radians per pixel
+	constexpr size_t KEY_COUNT_GLFW = 349;
 
 	struct State_
 	{
 		ShaderProgram* prog;
 		float dt;
 		float speedMod;
+		bool pressedKeys[KEY_COUNT_GLFW] = { false };
 
 		struct CamCtrl_
 		{
@@ -69,7 +71,7 @@ namespace
 
 	void glfw_callback_mouse_button_(GLFWwindow* window, int button, int action, int );
 
-	void updateCamera(State_::CamCtrl_& cam);
+	void updateCamera(State_& state);
 }
 
 int main() try
@@ -295,7 +297,7 @@ int main() try
 		state.dt = std::chrono::duration_cast<Secondsf>(now-last).count();
 		last = now;
 
-		updateCamera(state.camControl);
+		updateCamera(state);
 
 
 		Mat44f model2world = kIdentity44f;
@@ -374,37 +376,16 @@ namespace
 			return;
 		}
 
-		// Well we're gonna need you anyway
 		if (auto* state = static_cast<State_*>(glfwGetWindowUserPointer(aWindow)))
 		{
-			if (state->camControl.cameraActive)
+			if( GLFW_PRESS == aAction )
 			{
-				// Todo Fix this shit
-				if(mods & GLFW_MOD_SHIFT)
-					state->speedMod = 10;
-				else if(mods & GLFW_MOD_CONTROL)
-					state->speedMod = 0.5;
-				else
-					state->speedMod = 1;
-
-
-				float moveDistance = state->speedMod * kMovementPerSecond_ * state->dt;
-
-				if (GLFW_KEY_W == aKey && (aAction == GLFW_PRESS || aAction == GLFW_REPEAT))
-					state->camControl.cameraPos += state->camControl.cameraDirection * moveDistance;
-				if (GLFW_KEY_S == aKey && (aAction == GLFW_PRESS || aAction == GLFW_REPEAT))
-					state->camControl.cameraPos -= state->camControl.cameraDirection * moveDistance;
-				if (GLFW_KEY_A == aKey && (aAction == GLFW_PRESS || aAction == GLFW_REPEAT))
-					state->camControl.cameraPos -= normalize(cross(state->camControl.cameraDirection, state->camControl.cameraUp)) * moveDistance;
-				if (GLFW_KEY_D == aKey && (aAction == GLFW_PRESS || aAction == GLFW_REPEAT))
-					state->camControl.cameraPos += normalize(cross(state->camControl.cameraDirection, state->camControl.cameraUp)) * moveDistance;
-				if (GLFW_KEY_E == aKey && (aAction == GLFW_PRESS || aAction == GLFW_REPEAT))
-					state->camControl.cameraPos -= state->camControl.cameraUp * moveDistance;
-				if (GLFW_KEY_Q == aKey && (aAction == GLFW_PRESS || aAction == GLFW_REPEAT))
-					state->camControl.cameraPos += state->camControl.cameraUp * moveDistance;
-
+				state->pressedKeys[aKey] = true;
 			}
-
+			else if( aAction == GLFW_RELEASE )
+			{
+				state->pressedKeys[aKey] = false;
+			}
 		}
 	}
 
@@ -449,16 +430,42 @@ namespace
 	}
 
 
-	void updateCamera(State_::CamCtrl_& cam)
+	void updateCamera(State_& state)
 	{
+		State_::CamCtrl_& cam = state.camControl;
+
 		cam.cameraRight = normalize(cross({ 0.f, 1.f, 0.f }, cam.cameraDirection));
 		cam.cameraUp = cross(cam.cameraDirection, cam.cameraRight);
 
 		cam.cameraDirection = normalize( {float(cos(cam.yaw)) * float(cos(cam.pitch)),
 										  float(sin(cam.pitch)),
 										  float(sin(cam.yaw)) * float(cos(cam.pitch))} );
-	}
 
+		if (state.camControl.cameraActive)
+		{
+			if(state.pressedKeys[GLFW_KEY_LEFT_SHIFT])
+				state.speedMod = 10;
+			else if(state.pressedKeys[GLFW_MOD_CONTROL])
+				state.speedMod = 0.5;
+			else
+				state.speedMod = 1;
+
+			float moveDistance = state.speedMod * kMovementPerSecond_ * state.dt;
+
+			if (state.pressedKeys[GLFW_KEY_W])
+				state.camControl.cameraPos += state.camControl.cameraDirection * moveDistance;
+			if (state.pressedKeys[GLFW_KEY_S])
+				state.camControl.cameraPos -= state.camControl.cameraDirection * moveDistance;
+			if (state.pressedKeys[GLFW_KEY_A])
+				state.camControl.cameraPos -= normalize(cross(state.camControl.cameraDirection, state.camControl.cameraUp)) * moveDistance;
+			if (state.pressedKeys[GLFW_KEY_D])
+				state.camControl.cameraPos += normalize(cross(state.camControl.cameraDirection, state.camControl.cameraUp)) * moveDistance;
+			if (state.pressedKeys[GLFW_KEY_E])
+				state.camControl.cameraPos -= state.camControl.cameraUp * moveDistance;
+			if (state.pressedKeys[GLFW_KEY_Q])
+				state.camControl.cameraPos += state.camControl.cameraUp * moveDistance;
+		}
+	}
 
 }
 

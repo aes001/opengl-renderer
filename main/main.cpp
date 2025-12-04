@@ -47,6 +47,8 @@ namespace
 	struct State_
 	{
 		ShaderProgram* prog;
+		float dt;
+		float speedMod;
 
 		struct CamCtrl_
 		{
@@ -190,12 +192,13 @@ int main() try
 		} );
 
 	state.prog = &prog;
+	auto last = Clock::now();
 
 
 	ModelObject terrain( "assets/cw2/parlahti.obj" );
 	std::vector<Vec3f>& terrainVerts = terrain.Vertices();
 	std::vector<Vec3f>& terrainColours = terrain.VertexColours();
-	const int numTerrainVerts = terrainVerts.size();
+	const size_t numTerrainVerts = terrainVerts.size();
 
 	// VBO Creations
 	GLuint vboPosition = 0;
@@ -273,17 +276,19 @@ int main() try
 
 		// Update state
 
+		auto const now = Clock::now();
+		state.dt = std::chrono::duration_cast<Secondsf>(now-last).count();
+		last = now;
+
 		updateCamera(state.camControl);
 
 
-		//Mat44f model2world = make_rotation_y(45.f * std::numbers::pi_v<float> / 180.f);
 		Mat44f model2world = kIdentity44f;
 
-		Mat44f Rx = make_rotation_x( state.camControl.pitch );
-		Mat44f Ry = make_rotation_y( state.camControl.yaw );
-		Mat44f T = make_translation( -state.camControl.cameraPos);
-
-		Mat44f view = MakeLookAt(state.camControl.cameraPos, state.camControl.cameraDirection, state.camControl.cameraUp, state.camControl.cameraRight);
+		Mat44f view = MakeLookAt(state.camControl.cameraPos,
+								 state.camControl.cameraDirection,
+								 state.camControl.cameraUp,
+								 state.camControl.cameraRight);
 
 		//Mat44f world2camera = Rx * Ry * T;
 		Mat44f world2camera = view;
@@ -339,7 +344,7 @@ namespace
 		std::print( stderr, "GLFW error: {} ({})\n", aErrDesc, aErrNum );
 	}
 
-	void glfw_callback_key_( GLFWwindow* aWindow, int aKey, int, int aAction, int )
+	void glfw_callback_key_( GLFWwindow* aWindow, int aKey, int, int aAction, int mods )
 	{
 		if( GLFW_KEY_ESCAPE == aKey && GLFW_PRESS == aAction )
 		{
@@ -348,22 +353,33 @@ namespace
 		}
 
 		// Well we're gonna need you anyway
-		if (auto* state = static_cast<State_*>(glfwGetWindowUserPointer(aWindow))) 
+		if (auto* state = static_cast<State_*>(glfwGetWindowUserPointer(aWindow)))
 		{
 			if (state->camControl.cameraActive)
 			{
+				// Todo Fix this shit
+				if(mods & GLFW_MOD_SHIFT)
+					state->speedMod = 10;
+				else if(mods & GLFW_MOD_CONTROL)
+					state->speedMod = 0.5;
+				else
+					state->speedMod = 1;
+
+
+				float moveDistance = state->speedMod * kMovementPerSecond_ * state->dt;
+
 				if (GLFW_KEY_W == aKey && (aAction == GLFW_PRESS || aAction == GLFW_REPEAT))
-					state->camControl.cameraPos += state->camControl.cameraDirection * kMovementPerSecond_;
+					state->camControl.cameraPos += state->camControl.cameraDirection * moveDistance;
 				if (GLFW_KEY_S == aKey && (aAction == GLFW_PRESS || aAction == GLFW_REPEAT))
-					state->camControl.cameraPos -= state->camControl.cameraDirection * kMovementPerSecond_;
+					state->camControl.cameraPos -= state->camControl.cameraDirection * moveDistance;
 				if (GLFW_KEY_A == aKey && (aAction == GLFW_PRESS || aAction == GLFW_REPEAT))
-					state->camControl.cameraPos -= normalize(cross(state->camControl.cameraDirection, state->camControl.cameraUp)) * kMovementPerSecond_;
+					state->camControl.cameraPos -= normalize(cross(state->camControl.cameraDirection, state->camControl.cameraUp)) * moveDistance;
 				if (GLFW_KEY_D == aKey && (aAction == GLFW_PRESS || aAction == GLFW_REPEAT))
-					state->camControl.cameraPos += normalize(cross(state->camControl.cameraDirection, state->camControl.cameraUp)) * kMovementPerSecond_;
+					state->camControl.cameraPos += normalize(cross(state->camControl.cameraDirection, state->camControl.cameraUp)) * moveDistance;
 				if (GLFW_KEY_E == aKey && (aAction == GLFW_PRESS || aAction == GLFW_REPEAT))
-					state->camControl.cameraPos -= state->camControl.cameraUp * kMovementPerSecond_;
+					state->camControl.cameraPos -= state->camControl.cameraUp * moveDistance;
 				if (GLFW_KEY_Q == aKey && (aAction == GLFW_PRESS || aAction == GLFW_REPEAT))
-					state->camControl.cameraPos += state->camControl.cameraUp * kMovementPerSecond_;
+					state->camControl.cameraPos += state->camControl.cameraUp * moveDistance;
 
 			}
 
@@ -388,8 +404,6 @@ namespace
 				float tempPitch = state->camControl.pitch + dy*kMouseSensitivity_;
 
 				state->camControl.pitch = std::clamp(tempPitch, minPitch, maxPitch);
-
-				updateCamera;
 			}
 
 			state->camControl.lastX = float(aX);
@@ -415,16 +429,12 @@ namespace
 
 	void updateCamera(State_::CamCtrl_& cam)
 	{
-		// Update the camera state fields here except camera position
-		// updating the position will be on the callback_key_
-		// this should be direction and etc.
-		
-		cam.cameraRight = normalize(cross({ 0.f, 1.f, 0.f }, cam.cameraDirection)); //i dont know why it wont let me use cross product :D
+		cam.cameraRight = normalize(cross({ 0.f, 1.f, 0.f }, cam.cameraDirection));
 		cam.cameraUp = cross(cam.cameraDirection, cam.cameraRight);
 
-		cam.cameraDirection = normalize({ cos(cam.yaw) * cos(cam.pitch), sin(cam.pitch), sin(cam.yaw) * cos(cam.pitch) });
-
-
+		cam.cameraDirection = normalize( {float(cos(cam.yaw)) * float(cos(cam.pitch)),
+										  float(sin(cam.pitch)),
+										  float(sin(cam.yaw)) * float(cos(cam.pitch))} );
 	}
 
 

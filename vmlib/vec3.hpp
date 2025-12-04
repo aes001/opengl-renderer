@@ -150,4 +150,16 @@ Vec3f cross(Vec3f aLeft, Vec3f aRight) noexcept
 	return { aLeft[1] * aRight[2] - aRight[1] * aLeft[2], aLeft[2] * aRight[0] - aRight[2] * aLeft[0], aLeft[0] * aRight[1] - aRight[0] * aLeft[1] };
 }
 
+inline
+Vec3f square(Vec3f aVec) noexcept
+{
+	return { aVec[0] * aVec[0], aVec[1] * aVec[1], aVec[2] * aVec[2] };
+}
+
+inline
+Vec3f sqrt(Vec3f aVec) noexcept
+{
+	return {sqrt(aVec[0]), sqrt(aVec[1]), sqrt(aVec[2]) };
+}
+
 #endif // VEC3_HPP_5710DADF_17EF_453C_A9C8_4A73DC66B1CD

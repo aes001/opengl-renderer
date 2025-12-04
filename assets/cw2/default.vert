@@ -9,18 +9,23 @@
 // Note: the indices that we specify here must match the ones that we set up in the vertex array object.
 layout( location = 0 ) in vec3 iPosition;
 layout( location = 1 ) in vec3 iColor;
+layout( location = 2 ) in vec3 iNormal;
 
 layout( location = 0 ) uniform mat4 uProjCameraWorld;
+//layout( location = 1) uniform mat3 uNormalMatrix;
 
 // Output attributes
 // Output attributes are passed from the vertex shader, interpolated across the triangle/primitive, and then
 // passed into the fragment shader. By default, output attributes are matched by name.
 out vec3 v2fColor; // v2f = vertex to fragment
+out vec3 v2fNormal;
 
 void main()
 {
 	// Copy input color to the output color attribute.
 	v2fColor = iColor;
+
+	v2fNormal = normalize(iNormal);
 
 	gl_Position = uProjCameraWorld * vec4( iPosition.xyz, 1.0 );
 }

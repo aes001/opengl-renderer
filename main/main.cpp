@@ -198,6 +198,7 @@ int main() try
 	ModelObject terrain( "assets/cw2/parlahti.obj" );
 	std::vector<Vec3f>& terrainVerts = terrain.Vertices();
 	std::vector<Vec3f>& terrainColours = terrain.VertexColours();
+	std::vector<Vec3f>& terrainNormals = terrain.Normals();
 	const size_t numTerrainVerts = terrainVerts.size();
 
 	// VBO Creations
@@ -211,12 +212,16 @@ int main() try
 	glBindBuffer( GL_ARRAY_BUFFER, vboColor );
 	glBufferData( GL_ARRAY_BUFFER, terrainColours.size() * sizeof(Vec3f), terrainColours.data(), GL_STATIC_DRAW );
 
+	GLuint vboNormals = 0;
+	glGenBuffers(1, &vboNormals);
+	glBindBuffer(GL_ARRAY_BUFFER, vboNormals);
+	glBufferData(GL_ARRAY_BUFFER, terrainNormals.size() * sizeof(Vec3f), terrainNormals.data(), GL_STATIC_DRAW);
 
 	// Create VAO
 	GLuint vao = 0;
 	glGenVertexArrays( 1, &vao );
 	glBindVertexArray( vao );
-
+	//positions
 	glBindBuffer( GL_ARRAY_BUFFER, vboPosition );
 	glVertexAttribPointer(
 		0,
@@ -226,7 +231,7 @@ int main() try
 	);
 
 	glEnableVertexAttribArray( 0 );
-
+	//colours
 	glBindBuffer( GL_ARRAY_BUFFER, vboColor );
 	glVertexAttribPointer(
 		1,
@@ -236,6 +241,16 @@ int main() try
 	);
 
 	glEnableVertexAttribArray( 1 );
+	//normals
+	glBindBuffer(GL_ARRAY_BUFFER, vboNormals);
+	glVertexAttribPointer(
+		2,
+		3, GL_FLOAT, GL_FALSE,
+		0,
+		0
+	);
+
+	glEnableVertexAttribArray(2);
 
 	// Reset State
 	glBindVertexArray( 0 );
@@ -310,6 +325,13 @@ int main() try
 		glUseProgram( prog.programId() );
 
 		glUniformMatrix4fv(0, 1, GL_TRUE, projCameraWorld.v);
+
+		Vec3f lightDir = normalize(Vec3f{ -1.f, 1.f, 0.5f }); // light direction
+		glUniform3fv(1, 1, &lightDir.x);
+
+		glUniform3f(2, 0.9f, 0.9f, 0.6f); // light diffuse
+		glUniform3f(3, 0.05f, 0.05f, 0.05f); // light ambient
+
 		glBindVertexArray( vao );
 		glDrawArraysInstanced( GL_TRIANGLES, 0, numTerrainVerts, 1);
 

@@ -28,6 +28,9 @@ public:
 	const std::vector<Vec3f>& Vertices() const;
 	std::vector<Vec3f>& Vertices();
 
+	const std::vector<Vec3f>& Normals() const;
+	std::vector<Vec3f>& Normals();
+
 	const std::vector<Vec3f>& VertexColours() const;
 	std::vector<Vec3f>& VertexColours();
 
@@ -36,6 +39,8 @@ public:
 private:
 	std::vector<Vec3f> mVertices;
 	std::vector<Vec3f> mVertexColours;
+	std::vector<Vec3f> mNormals;
+	Vec3f CalculateNormal(Vec3f vertexA, Vec3f vertexB, Vec3f vertexC);
 
 };
 

@@ -1,3 +1,12 @@
+#if defined(_WIN32) // alternative: ”#if defined(_MSC_VER)”
+extern "C"
+{
+	__declspec(dllexport) unsigned long NvOptimusEnablement = 1;
+	__declspec(dllexport) unsigned long AmdPowerXpressRequestHighPerformance = 1; // untested
+	// See https://stackoverflow.com/questions/17458803/amd-equivalent-to-nvoptimusenablement
+}
+#endif
+
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
@@ -203,28 +212,15 @@ int main() try
 	std::vector<Vec3f>& terrainNormals = terrain.Normals();
 	const size_t numTerrainVerts = terrainVerts.size();
 
-	// VBO Creations
-	GLuint vboPosition = 0;
-	glGenBuffers( 1, &vboPosition );
-	glBindBuffer( GL_ARRAY_BUFFER, vboPosition );
-	glBufferData( GL_ARRAY_BUFFER, terrainVerts.size() * sizeof(Vec3f), terrainVerts.data(), GL_STATIC_DRAW );
-
-	GLuint vboColor = 0;
-	glGenBuffers(1, &vboColor );
-	glBindBuffer( GL_ARRAY_BUFFER, vboColor );
-	glBufferData( GL_ARRAY_BUFFER, terrainColours.size() * sizeof(Vec3f), terrainColours.data(), GL_STATIC_DRAW );
-
-	GLuint vboNormals = 0;
-	glGenBuffers(1, &vboNormals);
-	glBindBuffer(GL_ARRAY_BUFFER, vboNormals);
-	glBufferData(GL_ARRAY_BUFFER, terrainNormals.size() * sizeof(Vec3f), terrainNormals.data(), GL_STATIC_DRAW);
+	// Load model into VBOs
+	ModelObjectGPU terrainGPU( terrain );
 
 	// Create VAO
 	GLuint vao = 0;
 	glGenVertexArrays( 1, &vao );
 	glBindVertexArray( vao );
 	//positions
-	glBindBuffer( GL_ARRAY_BUFFER, vboPosition );
+	glBindBuffer( GL_ARRAY_BUFFER, terrainGPU.vbo(kVboPositions) );
 	glVertexAttribPointer(
 		0,
 		3, GL_FLOAT, GL_FALSE,
@@ -234,7 +230,7 @@ int main() try
 
 	glEnableVertexAttribArray( 0 );
 	//colours
-	glBindBuffer( GL_ARRAY_BUFFER, vboColor );
+	glBindBuffer( GL_ARRAY_BUFFER, terrainGPU.vbo(kVboVertexColor) );
 	glVertexAttribPointer(
 		1,
 		3, GL_FLOAT, GL_FALSE,
@@ -244,7 +240,7 @@ int main() try
 
 	glEnableVertexAttribArray( 1 );
 	//normals
-	glBindBuffer(GL_ARRAY_BUFFER, vboNormals);
+	glBindBuffer(GL_ARRAY_BUFFER, terrainGPU.vbo(kVboNormals));
 	glVertexAttribPointer(
 		2,
 		3, GL_FLOAT, GL_FALSE,
@@ -254,11 +250,19 @@ int main() try
 
 	glEnableVertexAttribArray(2);
 
+	//normals
+	glBindBuffer(GL_ARRAY_BUFFER, terrainGPU.vbo(kVboTextureCoords));
+	glVertexAttribPointer(
+		3,
+		2, GL_FLOAT, GL_FALSE,
+		0,
+		0
+	);
+	glEnableVertexAttribArray(3);
+
 	// Reset State
 	glBindVertexArray( 0 );
 	glBindBuffer( GL_ARRAY_BUFFER, 0 );
-	glDeleteBuffers( 1, &vboColor );
-	glDeleteBuffers( 1, &vboPosition  );
 
 	OGL_CHECKPOINT_ALWAYS();
 
@@ -307,9 +311,7 @@ int main() try
 								 state.camControl.cameraUp,
 								 state.camControl.cameraRight);
 
-		//Mat44f world2camera = Rx * Ry * T;
 		Mat44f world2camera = view;
-		//Mat44f world2camera = make_translation( {0.f, 0.f, -10.f });
 		Mat44f projection = make_perspective_projection(
 			60.f * std::numbers::pi_v<float> / 180.f,
 			fbwidth/float(fbheight),
@@ -335,6 +337,9 @@ int main() try
 		glUniform3f(3, 0.05f, 0.05f, 0.05f); // light ambient
 
 		glBindVertexArray( vao );
+		glActiveTexture( GL_TEXTURE0 );
+		glBindTexture( GL_TEXTURE_2D, terrainGPU.vbo(kDiffuseTexture) );
+
 		glDrawArraysInstanced( GL_TRIANGLES, 0, numTerrainVerts, 1);
 
 		glBindVertexArray( 0 );

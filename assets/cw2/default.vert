@@ -10,6 +10,7 @@
 layout( location = 0 ) in vec3 iPosition;
 layout( location = 1 ) in vec3 iColor;
 layout( location = 2 ) in vec3 iNormal;
+layout( location = 3 ) in vec2 iTexCoord;
 
 layout( location = 0 ) uniform mat4 uProjCameraWorld;
 //layout( location = 1) uniform mat3 uNormalMatrix;
@@ -19,6 +20,7 @@ layout( location = 0 ) uniform mat4 uProjCameraWorld;
 // passed into the fragment shader. By default, output attributes are matched by name.
 out vec3 v2fColor; // v2f = vertex to fragment
 out vec3 v2fNormal;
+out vec2 v2fTexCoord;
 
 void main()
 {
@@ -26,6 +28,8 @@ void main()
 	v2fColor = iColor;
 
 	v2fNormal = normalize(iNormal);
+
+	v2fTexCoord = iTexCoord;
 
 	gl_Position = uProjCameraWorld * vec4( iPosition.xyz, 1.0 );
 }

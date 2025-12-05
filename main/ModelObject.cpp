@@ -242,7 +242,8 @@ ModelObjectGPU::~ModelObjectGPU()
 	glDeleteBuffers( 1, &mVboVertexColor );
 	glDeleteBuffers( 1, &mVboNormals );
 	glDeleteBuffers( 1, &mVboTextureCoords );
-	//glDeleteBuffers( 1, &mVboTexture );
+
+	glDeleteTextures( 1, &mDiffuseTexture );
 }
 
 

@@ -319,6 +319,8 @@ int main() try
 
 	// Space Ship
 
+
+
 	// Create a transform for a cube
 	Transform cubeTransform{
 		.mPosition{5.f, 0.f, 3.f},
@@ -361,8 +363,8 @@ int main() try
 		0,
 		0
 	);
-
 	glEnableVertexAttribArray( 0 );
+	
 	//colours
 	glBindBuffer( GL_ARRAY_BUFFER, cubeTestGPU.BufferId(kVboVertexColor) );
 	glVertexAttribPointer(
@@ -371,8 +373,8 @@ int main() try
 		0,
 		0
 	);
-
 	glEnableVertexAttribArray( 1 );
+
 	//normals
 	glBindBuffer(GL_ARRAY_BUFFER, cubeTestGPU.BufferId(kVboNormals));
 	glVertexAttribPointer(
@@ -381,6 +383,7 @@ int main() try
 		0,
 		0
 	);
+	glEnableVertexAttribArray(2);
 
 
 
@@ -642,4 +645,59 @@ namespace
 		if( window )
 			glfwDestroyWindow( window );
 	}
+}
+
+namespace 
+{
+	ModelObject create_ship() 
+	{
+		Vec3f base_colour = { 0.7f, 0.7f, 0.7f };
+
+		// Create a transform for a cube
+		Transform cubeTransform{
+			.mPosition{5.f, 0.f, 3.f},
+			.mRotation{0.785398f, 0.f, 0.f},
+			.mScale{0.5f, 0.5f, 0.5f}
+		};
+		ModelObject cubeTest = MakeCube({ 0.8f, 0.8f, 0.8f }, cubeTransform);
+
+		// Create a transform for a cylinder
+		Transform cylinderTransform{
+			.mPosition{5.f, 7.f, 3.f},
+			.mRotation{2.f, 0.f, 0.f},
+			.mScale{2.f, 2.f, 2.f}
+		};
+		ModelObject cylinderTest = MakeCylinder(true, 10, { 0.7f, 0.7f, 0.7f }, cylinderTransform);
+
+		Transform bodyTransform{
+			.mPosition{5.f, 7.f, 3.f},
+			.mRotation{2.f, 0.f, 0.f},
+			.mScale{2.f, 2.f, 2.f}
+		};
+		ModelObject body = MakeCylinder(true, 16, base_colour, bodyTransform);
+
+		ModelObject leftNacel = MakeCylinder(true, 16, base_colour, bodyTransform);
+		ModelObject rightNacel = MakeCylinder(true, 16, base_colour, bodyTransform);
+
+		ModelObject saucerSection = MakeCylinder(true, 16, base_colour, bodyTransform);
+
+		ModelObject leftArm = MakeCube(base_colour, cubeTransform);
+		ModelObject rightArm = MakeCube(base_colour, cubeTransform);
+		ModelObject neck = MakeCube(base_colour, cubeTransform);
+
+		Transform coneTransform{
+			.mPosition{5.f, 7.f, 3.f},
+			.mRotation{2.f, 0.f, 0.f},
+			.mScale{2.f, 2.f, 2.f}
+		};
+		ModelObject bottomSaucer = MakeCone(false, 16, base_colour, coneTransform);
+		ModelObject upSaucer = MakeCone(false, 16, base_colour, coneTransform);
+
+		// Combine the two model objects
+		ModelObject combined = CombineShapeModelObjects(cubeTest, cylinderTest);
+
+		return combined;
+	}
+
+
 }

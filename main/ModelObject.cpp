@@ -3,6 +3,7 @@
 #include <rapidobj/rapidobj.hpp>
 #include <stb_image.h>
 #include "../vmlib/mat44.hpp"
+#include "../vmlib/mat33.hpp"
 #include "../vmlib/vec2.hpp"
 
 
@@ -536,45 +537,24 @@ Mat44f Transform::Matrix() const
 	return translate * rotation * scale;
 }
 
+Mat33f Transform::NormalUpdateMatrix() const 
+{
+	Mat44f rotX = make_rotation_x(mRotation.x);
+	Mat44f rotY = make_rotation_y(mRotation.y);
+	Mat44f rotZ = make_rotation_z(mRotation.z);
 
-// Deprecated
-//ObjectInstance::ObjectInstance( ModelObjectGPU& modelObjectGPU, Transform transform )
-//	: mModelObjectGPU( modelObjectGPU )
-//	, mTransform( transform )
-//{
-//}
-//
-//
-//ObjectInstance::ObjectInstance( ModelObjectGPU& modelObjectGPU )
-//	: mModelObjectGPU( modelObjectGPU )
-//{
-//}
-//
-//
-//
-//const Transform& ObjectInstance::GetTransform() const
-//{
-//	return mTransform;
-//}
-//
-//
-//Transform& ObjectInstance::GetTransform()
-//{
-//	return mTransform;
-//}
-//
-//
-//const ModelObjectGPU& ObjectInstance::GetModel() const
-//{
-//	return mModelObjectGPU;
-//}
-//
-//
-//ModelObjectGPU& ObjectInstance::GetModel()
-//{
-//	return mModelObjectGPU;
-//}
+	Mat44f rotation = rotZ * rotY * rotX;
 
+	Mat44f scale = make_scaling(mScale.x, mScale.y, mScale.z);
+
+	Mat44f N4 = rotation * invert(scale);
+
+	Mat33f N3 = { N4[0,0], N4[0,1], N4[0,2],
+				  N4[1,0], N4[1,1], N4[1,2],
+				  N4[2,0], N4[2,1], N4[2,2]};
+
+	return N3;
+}
 
 ObjectInstanceGroup::ObjectInstanceGroup( ModelObjectGPU& modelObjectGPU )
 	: mModelObjectGPU( modelObjectGPU )

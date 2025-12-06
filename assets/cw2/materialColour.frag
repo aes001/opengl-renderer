@@ -15,4 +15,5 @@ void main()
 
 	//apply simplfied blinn phong
 	oColor = (uSceneAmbient + nDotL*uLightDiffuse) * v2fColor;
+	//oColor = normal;
 }

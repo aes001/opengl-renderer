@@ -28,6 +28,7 @@ extern "C"
 
 #include "defaults.hpp"
 #include "ModelObject.hpp"
+#include "ShapeObject.hpp"
 #include "LookAt.hpp"
 
 
@@ -56,7 +57,7 @@ namespace
 
 	struct State_
 	{
-		ShaderProgram* prog;
+		std::vector<ShaderProgram*> progs;
 		float dt;
 		float speedMod;
 		bool pressedKeys[KEY_COUNT_GLFW] = { false };
@@ -200,17 +201,22 @@ int main() try
 	ShaderProgram prog( {
 		{ GL_VERTEX_SHADER, "assets/cw2/default.vert" },
 		{ GL_FRAGMENT_SHADER, "assets/cw2/default.frag" }
-		} );
+	} );
 
-	state.prog = &prog;
+	ShaderProgram prog2( {
+		{GL_VERTEX_SHADER, "assets/cw2/materialColour.vert"},
+		{GL_FRAGMENT_SHADER, "assets/cw2/materialColour.frag"}
+	} );
+
+	state.progs.push_back(&prog);
+	state.progs.push_back(&prog2);
 	auto last = Clock::now();
 
 
-	ModelObject terrain( "assets/cw2/parlahti.obj" );
+	uint32_t terrainLoadFlags = kLoadTextureCoords | kLoadVertexColour;
+	ModelObject terrain( "assets/cw2/parlahti.obj", terrainLoadFlags );
 	std::vector<Vec3f>& terrainVerts = terrain.Vertices();
-	std::vector<Vec3f>& terrainColours = terrain.VertexColours();
-	std::vector<Vec3f>& terrainNormals = terrain.Normals();
-	const size_t numTerrainVerts = terrainVerts.size();
+	const GLsizei numTerrainVerts = static_cast<GLsizei>( terrainVerts.size() );
 
 	// Load model into VBOs
 	ModelObjectGPU terrainGPU( terrain );
@@ -220,7 +226,7 @@ int main() try
 	glGenVertexArrays( 1, &vao );
 	glBindVertexArray( vao );
 	//positions
-	glBindBuffer( GL_ARRAY_BUFFER, terrainGPU.vbo(kVboPositions) );
+	glBindBuffer( GL_ARRAY_BUFFER, terrainGPU.BufferId(kVboPositions) );
 	glVertexAttribPointer(
 		0,
 		3, GL_FLOAT, GL_FALSE,
@@ -230,7 +236,7 @@ int main() try
 
 	glEnableVertexAttribArray( 0 );
 	//colours
-	glBindBuffer( GL_ARRAY_BUFFER, terrainGPU.vbo(kVboVertexColor) );
+	glBindBuffer( GL_ARRAY_BUFFER, terrainGPU.BufferId(kVboVertexColor) );
 	glVertexAttribPointer(
 		1,
 		3, GL_FLOAT, GL_FALSE,
@@ -240,7 +246,7 @@ int main() try
 
 	glEnableVertexAttribArray( 1 );
 	//normals
-	glBindBuffer(GL_ARRAY_BUFFER, terrainGPU.vbo(kVboNormals));
+	glBindBuffer(GL_ARRAY_BUFFER, terrainGPU.BufferId(kVboNormals));
 	glVertexAttribPointer(
 		2,
 		3, GL_FLOAT, GL_FALSE,
@@ -250,8 +256,8 @@ int main() try
 
 	glEnableVertexAttribArray(2);
 
-	//normals
-	glBindBuffer(GL_ARRAY_BUFFER, terrainGPU.vbo(kVboTextureCoords));
+	//Texture
+	glBindBuffer(GL_ARRAY_BUFFER, terrainGPU.BufferId(kVboTextureCoords));
 	glVertexAttribPointer(
 		3,
 		2, GL_FLOAT, GL_FALSE,
@@ -259,6 +265,124 @@ int main() try
 		0
 	);
 	glEnableVertexAttribArray(3);
+
+
+	// Second Model
+	uint32_t landingPadLoadFlags = kLoadVertexColour
+								 | kLoadVertexAmbient
+								 | kLoadVertexSpecular
+								 | kLoadVertexShininess;
+	ModelObject landingPad( "assets/cw2/landingpad.obj", landingPadLoadFlags );
+	ModelObjectGPU landingPadGPU( landingPad );
+	const GLsizei landingPadVertsCount = static_cast<GLsizei>( landingPad.Vertices().size() );
+
+	ObjectInstanceGroup landingPadInstances( landingPadGPU );
+	landingPadInstances.CreateInstance( Transform( { .mPosition{-19.f,  -0.97f, 10.f} } ) );
+	landingPadInstances.CreateInstance( Transform( { .mPosition{-34.7f, -0.97f, 1.f } } ) );
+
+
+	GLuint vaoLandingPad = 0;
+	glGenVertexArrays( 1, &vaoLandingPad );
+	glBindVertexArray( vaoLandingPad );
+	//positions
+	glBindBuffer( GL_ARRAY_BUFFER, landingPadGPU.BufferId(kVboPositions) );
+	glVertexAttribPointer(
+		0,
+		3, GL_FLOAT, GL_FALSE,
+		0,
+		0
+	);
+
+	glEnableVertexAttribArray( 0 );
+	//colours
+	glBindBuffer( GL_ARRAY_BUFFER, landingPadGPU.BufferId(kVboVertexColor) );
+	glVertexAttribPointer(
+		1,
+		3, GL_FLOAT, GL_FALSE,
+		0,
+		0
+	);
+
+	glEnableVertexAttribArray( 1 );
+	//normals
+	glBindBuffer(GL_ARRAY_BUFFER, landingPadGPU.BufferId(kVboNormals));
+	glVertexAttribPointer(
+		2,
+		3, GL_FLOAT, GL_FALSE,
+		0,
+		0
+	);
+
+
+	glEnableVertexAttribArray(2);
+
+
+	// Space Ship
+
+	// Create a transform for a cube
+	Transform cubeTransform{
+		.mPosition{5.f, 0.f, 3.f},
+		.mRotation{0.785398f, 0.f, 0.f},
+		.mScale{0.5f, 0.5f, 0.5f}
+	};
+	ModelObject cubeTest = MakeCube( {0.8f, 0.8f, 0.8f}, cubeTransform );
+
+	// Create a transform for a cylinder
+	Transform cylinderTransform{
+		.mPosition{5.f, 7.f, 3.f},
+		.mRotation{2.f, 0.f, 0.f},
+		.mScale{2.f, 2.f, 2.f}
+	};
+	ModelObject cylinderTest = MakeCylinder( true, 10, {0.7f, 0.7f, 0.7f}, cylinderTransform );
+
+	// Combine the two model objects
+	ModelObject combined = CombineShapeModelObjects(cubeTest, cylinderTest);
+	const GLsizei spaceShipVertsCount = combined.Vertices().size();
+
+	//ModelObject cubeTest = MakeCylinder( true, 5, {0.7f, 0.f, 0.f}, cubeTransform );
+	//ModelObject cubeTest = MakeCone( true, 5, {0.8f, 0.8f, 0.8f}, cubeTransform );
+
+	// Creaete the vbos for the model object
+	ModelObjectGPU cubeTestGPU( combined );
+
+	// Create an instance of the model object
+	// Makes the model object have a position that we can later modify
+	ObjectInstanceGroup cubeTestInstance( cubeTestGPU );
+	cubeTestInstance.CreateInstance({/* This is also a transform object like the ones we created for the cube and cylinder */});
+
+	GLuint vaoSpaceShip = 0;
+	glGenVertexArrays( 1, &vaoSpaceShip );
+	glBindVertexArray( vaoSpaceShip );
+	//positions
+	glBindBuffer( GL_ARRAY_BUFFER, cubeTestGPU.BufferId(kVboPositions) );
+	glVertexAttribPointer(
+		0,
+		3, GL_FLOAT, GL_FALSE,
+		0,
+		0
+	);
+
+	glEnableVertexAttribArray( 0 );
+	//colours
+	glBindBuffer( GL_ARRAY_BUFFER, cubeTestGPU.BufferId(kVboVertexColor) );
+	glVertexAttribPointer(
+		1,
+		3, GL_FLOAT, GL_FALSE,
+		0,
+		0
+	);
+
+	glEnableVertexAttribArray( 1 );
+	//normals
+	glBindBuffer(GL_ARRAY_BUFFER, cubeTestGPU.BufferId(kVboNormals));
+	glVertexAttribPointer(
+		2,
+		3, GL_FLOAT, GL_FALSE,
+		0,
+		0
+	);
+
+
 
 	// Reset State
 	glBindVertexArray( 0 );
@@ -315,7 +439,7 @@ int main() try
 		Mat44f projection = make_perspective_projection(
 			60.f * std::numbers::pi_v<float> / 180.f,
 			fbwidth/float(fbheight),
-			0.1f, 100.0f
+			0.1f, 200.0f
 		);
 
 		Mat44f projCameraWorld = projection * world2camera * model2world;
@@ -324,7 +448,7 @@ int main() try
 		// Draw scene
 		OGL_CHECKPOINT_DEBUG();
 
-		// EXERCISE 5
+		// Rendering the terrain
 		glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
 		glUseProgram( prog.programId() );
 
@@ -332,16 +456,45 @@ int main() try
 
 		Vec3f lightDir = normalize(Vec3f{ -1.f, 1.f, 0.5f }); // light direction
 		glUniform3fv(1, 1, &lightDir.x);
-
 		glUniform3f(2, 0.9f, 0.9f, 0.6f); // light diffuse
 		glUniform3f(3, 0.05f, 0.05f, 0.05f); // light ambient
 
 		glBindVertexArray( vao );
 		glActiveTexture( GL_TEXTURE0 );
-		glBindTexture( GL_TEXTURE_2D, terrainGPU.vbo(kDiffuseTexture) );
-
+		glBindTexture( GL_TEXTURE_2D, terrainGPU.BufferId(kDiffuseTexture) );
 		glDrawArraysInstanced( GL_TRIANGLES, 0, numTerrainVerts, 1);
 
+		glBindTexture( GL_TEXTURE_2D, 0 );
+
+
+
+		// Render the landing pad
+		glUseProgram( prog2.programId() );
+
+		GLint locProj     = glGetUniformLocation( prog2.programId(), "uProjCameraWorld" );
+		GLint locLightDir = glGetUniformLocation (prog2.programId(), "uLightDir" );
+		GLint locDiffuse  = glGetUniformLocation( prog2.programId(), "uLightDiffuse" );
+		GLint locAmbient  = glGetUniformLocation( prog2.programId(), "uSceneAmbient" );
+
+		std::vector<Mat44f> projectionList = landingPadInstances.GetProjCameraWorldArray(projection, world2camera);
+		glUniformMatrix4fv(locProj, (GLsizei) projectionList.size(), GL_TRUE, projectionList.data()[0].v );
+		glUniform3fv(locLightDir, 1, &lightDir.x);
+		glUniform3f(locDiffuse, 0.9f, 0.9f, 0.6f); // light diffuse
+		glUniform3f(locAmbient, 0.05f, 0.05f, 0.05f); // light ambient
+		glBindVertexArray( vaoLandingPad );
+		glDrawArraysInstanced( GL_TRIANGLES, 0, landingPadVertsCount, landingPadInstances.GetInstanceCount());
+
+
+
+		// Spaceship
+		// We need to use the GetProjCameraWorldArray() from the instance group so we can later animate the spaceship
+		std::vector<Mat44f> projectionList2 = cubeTestInstance.GetProjCameraWorldArray(projection, world2camera);
+		glUniformMatrix4fv(locProj, (GLsizei) projectionList2.size(), GL_TRUE, projectionList2.data()[0].v );
+		glBindVertexArray( vaoSpaceShip );
+		glDrawArraysInstanced( GL_TRIANGLES, 0, spaceShipVertsCount, cubeTestInstance.GetInstanceCount());
+
+
+		// Cleanup
 		glBindVertexArray( 0 );
 		glUseProgram( 0 );
 
@@ -353,7 +506,10 @@ int main() try
 
 	// Cleanup.
 	//TODO: additional cleanup
-	state.prog = nullptr;
+	for( auto& prog : state.progs )
+	{
+		prog = nullptr;
+	}
 
 	return 0;
 }
@@ -373,7 +529,7 @@ namespace
 		std::print( stderr, "GLFW error: {} ({})\n", aErrDesc, aErrNum );
 	}
 
-	void glfw_callback_key_( GLFWwindow* aWindow, int aKey, int, int aAction, int mods )
+	void glfw_callback_key_( GLFWwindow* aWindow, int aKey, int, int aAction, int )
 	{
 		if( GLFW_KEY_ESCAPE == aKey && GLFW_PRESS == aAction )
 		{

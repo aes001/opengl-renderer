@@ -1,17 +1,17 @@
 // Includes
 #include "ModelObject.hpp"
 #include <rapidobj/rapidobj.hpp>
-#include "../vmlib/vec3.hpp"
-#include "../vmlib/vec2.hpp"
 #include <stb_image.h>
+#include "../vmlib/mat44.hpp"
+#include "../vmlib/vec2.hpp"
 
 
 using namespace rapidobj;
 
 
-ModelObject::ModelObject( const char* objPath )
+ModelObject::ModelObject( const char* objPath, uint32_t loadFlags /*= kLoadEverything*/ )
+	: mLoadFlags( loadFlags )
 {
-
 	// ACKNOWLEDGEMENT
 	// Code in this function is heavily inspired from Exercise G.4 loadObj.cpp
 	// Specifically the function: 'SimpleMeshData load_wavefront_obj( char const* aPath );'
@@ -41,26 +41,59 @@ ModelObject::ModelObject( const char* objPath )
 				result.attributes.positions[idx.position_index*3+2]
 			} );
 
-			mTextureCoords.emplace_back( Vec2f{
-				result.attributes.texcoords[idx.texcoord_index*2+0],
-				result.attributes.texcoords[idx.texcoord_index*2+1]
-			} );
+
+			if ( loadFlags & kLoadTextureCoords )
+			{
+				mTextureCoords.emplace_back( Vec2f{
+					result.attributes.texcoords[idx.texcoord_index*2+0],
+					result.attributes.texcoords[idx.texcoord_index*2+1]
+				} );
+			}
 
 
 			// Always triangles, so we can find the face index by dividing the vertex index by three
 			auto const& mat = result.materials[shape.mesh.material_ids[i/3]];
 
 			// Yes we are assuming that there is only one shape and one diffuse texture
-			std::filesystem::path filePath( objPath );
-			mDiffuseTexturePath = filePath.replace_filename(mat.diffuse_texname).string();
+			mDiffuseTexturePath = "";
+			if (!mat.diffuse_texname.empty())
+			{
+				std::filesystem::path filePath( objPath );
+				mDiffuseTexturePath = filePath.replace_filename(mat.diffuse_texname).string();
+			}
 
-			// Just replicate the material ambient color for each vertex...
-			mVertexColours.emplace_back( Vec3f{
-				mat.ambient[0],
-				mat.ambient[1],
-				mat.ambient[2]
-			} );
+			if ( loadFlags & kLoadVertexColour )
+			{
+				mVertexColours.emplace_back( Vec3f{
+					mat.diffuse[0],
+					mat.diffuse[1],
+					mat.diffuse[2]
+				} );
+			}
 
+			if ( loadFlags & kLoadVertexAmbient )
+			{
+				mVertexAmbient.emplace_back( Vec3f{
+					mat.ambient[0],
+					mat.ambient[1],
+					mat.ambient[2]
+				} );
+			}
+
+			if ( loadFlags & kLoadVertexSpecular )
+			{
+				mVertexSpecular.emplace_back( Vec3f{
+					mat.specular[0],
+					mat.specular[1],
+					mat.specular[2]
+				} );
+			}
+
+
+			if ( loadFlags & kLoadVertexShininess )
+			{
+				mVertexShininess.emplace_back( mat.shininess );
+			}
 		}
 	}
 
@@ -89,6 +122,15 @@ ModelObject::ModelObject( const char* objPath )
 		mNormals.emplace_back(vertNormal);
 	}
 
+}
+
+
+ModelObject::ModelObject( std::vector<Vec3f> positions, std::vector<Vec3f> normals, std::vector<Vec3f> colours )
+	: mVertices( std::move(positions) )
+	, mNormals( std::move(normals) )
+	, mVertexColours( std::move(colours) )
+	, mLoadFlags ( kLoadVertexColour )
+{
 }
 
 
@@ -141,6 +183,42 @@ std::vector<Vec3f>& ModelObject::VertexColours()
 }
 
 
+const std::vector<Vec3f>& ModelObject::VertexAmbient() const
+{
+	return mVertexAmbient;
+}
+
+
+std::vector<Vec3f>& ModelObject::VertexAmbient()
+{
+	return mVertexAmbient;
+}
+
+
+const std::vector<Vec3f>& ModelObject::VertexSpecular() const
+{
+	return mVertexSpecular;
+}
+
+
+std::vector<Vec3f>& ModelObject::VertexSpecular()
+{
+	return mVertexSpecular;
+}
+
+
+const std::vector<float>& ModelObject::VertexShininess() const
+{
+	return mVertexShininess;
+}
+
+
+std::vector<float>& ModelObject::VertexShininess()
+{
+	return mVertexShininess;
+}
+
+
 const std::vector<Vec2f>& ModelObject::TextureCoords() const
 {
 	return mTextureCoords;
@@ -165,11 +243,16 @@ const std::string& ModelObject::DiffuseTexturePath() const
 }
 
 
+uint32_t ModelObject::LoadFlags() const
+{
+	return mLoadFlags;
+}
+
 
 GLuint LoadTexture2D( char const* aPath )
 {
 	// ACKNOWLEDGEMENT
-	// Code in this function is taken from Exercise G.6 ExerciseG6.pdf
+	// Code in this function is taken from Exercise G.6 of ExerciseG6.pdf
 	// Specifically the function: 'GLuint load_texture_2d( char const* aPath );'
 	// Many thanks to Markus Billeter for providing the code in that exercise.
 
@@ -217,19 +300,54 @@ GLuint LoadTexture2D( char const* aPath )
 ModelObjectGPU::ModelObjectGPU( const ModelObject& model )
 	: mVboPositions(0)
 	, mVboVertexColor(0)
+	, mVboVertexAmbient(0)
+	, mVboVertexSpecular(0)
+	, mVboVertexShininess(0)
 	, mVboNormals(0)
 	, mVboTextureCoords(0)
 	, mDiffuseTexture(0)
 {
 	CreatePositionsVBO( model );
-	CreateVertexColourVBO( model );
 	CreateNormalsVBO( model );
-	CreateTextureCoordsVBO( model );
 
-	// !!! IMPORTANT !!!
-	// Ensure that the ModelObject.DiffuseTexturePath() path is valid!
-	// or else we will crash!
-	CreateTexture( model );
+
+	uint32_t loadFlags = model.LoadFlags();
+
+	if( loadFlags & kLoadVertexColour )
+	{
+		CreateVertexColourVBO( model );
+	}
+
+	if ( loadFlags & kLoadTextureCoords )
+	{
+		CreateTextureCoordsVBO( model );
+	}
+
+	if( loadFlags & kLoadVertexAmbient )
+	{
+		CreateVertexAmbientVBO( model );
+	}
+
+	if( loadFlags & kLoadVertexSpecular )
+	{
+		CreateVertexSpecularVBO( model );
+	}
+
+	if( loadFlags & kLoadVertexShininess )
+	{
+		CreateVertexShininessVBO( model );
+	}
+
+
+	// Only load textures if we have UVs
+	if ( loadFlags & kLoadTextureCoords )
+	{
+		// !!! IMPORTANT !!!
+		// Ensure that the ModelObject.DiffuseTexturePath() path is valid!
+		// or else we will crash!
+		CreateTexture( model );
+	}
+
 
 	// Clean up
 	glBindBuffer( GL_ARRAY_BUFFER, 0 );
@@ -238,26 +356,63 @@ ModelObjectGPU::ModelObjectGPU( const ModelObject& model )
 
 ModelObjectGPU::~ModelObjectGPU()
 {
-	glDeleteBuffers( 1, &mVboPositions );
-	glDeleteBuffers( 1, &mVboVertexColor );
-	glDeleteBuffers( 1, &mVboNormals );
-	glDeleteBuffers( 1, &mVboTextureCoords );
-
-	glDeleteTextures( 1, &mDiffuseTexture );
+	ReleaseBuffers();
 }
 
 
-GLuint ModelObjectGPU::vbo(eVboTypes vboType) const
+ModelObjectGPU::ModelObjectGPU( ModelObjectGPU&& other ) noexcept
+	: mVboPositions       ( std::exchange(other.mVboPositions, 0) )
+	, mVboVertexColor     ( std::exchange(other.mVboVertexColor, 0) )
+	, mVboVertexAmbient	  ( std::exchange(other.mVboVertexAmbient, 0) )
+	, mVboVertexSpecular  ( std::exchange(other.mVboVertexSpecular, 0) )
+	, mVboVertexShininess ( std::exchange(other.mVboVertexShininess, 0) )
+	, mVboNormals         ( std::exchange(other.mVboNormals, 0) )
+	, mVboTextureCoords   ( std::exchange(other.mVboTextureCoords, 0) )
+	, mDiffuseTexture     ( std::exchange(other.mDiffuseTexture, 0) )
+{
+}
+
+
+ModelObjectGPU& ModelObjectGPU::operator=( ModelObjectGPU&& other ) noexcept
+{
+	if( this != &other )
+	{
+		ReleaseBuffers();
+
+		mVboPositions       = std::exchange( other.mVboPositions, 0 );
+		mVboVertexColor     = std::exchange( other.mVboVertexColor, 0 );
+		mVboVertexAmbient   = std::exchange( other.mVboVertexAmbient, 0 );
+		mVboVertexSpecular  = std::exchange( other.mVboVertexSpecular, 0 );
+		mVboVertexShininess = std::exchange( other.mVboVertexShininess, 0 );
+		mVboNormals         = std::exchange( other.mVboNormals, 0 );
+		mVboTextureCoords   = std::exchange( other.mVboTextureCoords, 0 );
+		mDiffuseTexture     = std::exchange( other.mDiffuseTexture, 0 );
+	}
+
+	return *this;
+}
+
+
+GLuint ModelObjectGPU::BufferId(eBufferType bufferType) const
 {
 	GLuint ret = 0;
 
-	switch( vboType )
+	switch( bufferType )
 	{
 		case kVboPositions:
 			ret = mVboPositions;
 			break;
 		case kVboVertexColor:
 			ret = mVboVertexColor;
+			break;
+		case kVboVertexAmbient:
+			ret = mVboVertexAmbient;
+			break;
+		case kVboVertexSpecular:
+			ret = mVboVertexSpecular;
+			break;
+		case kVboVertexShininess:
+			ret = mVboVertexShininess;
 			break;
 		case kVboNormals:
 			ret = mVboNormals;
@@ -306,6 +461,30 @@ void ModelObjectGPU::CreateTextureCoordsVBO( const ModelObject& model )
 }
 
 
+void ModelObjectGPU::CreateVertexAmbientVBO( const ModelObject& model )
+{
+	glGenBuffers( 1, &mVboVertexAmbient );
+	glBindBuffer( GL_ARRAY_BUFFER, mVboVertexAmbient );
+	glBufferData( GL_ARRAY_BUFFER, model.VertexAmbient().size() * sizeof(Vec3f), model.VertexAmbient().data(), GL_STATIC_DRAW );
+}
+
+
+void ModelObjectGPU::CreateVertexSpecularVBO( const ModelObject& model )
+{
+	glGenBuffers( 1, &mVboVertexSpecular );
+	glBindBuffer( GL_ARRAY_BUFFER, mVboVertexSpecular );
+	glBufferData( GL_ARRAY_BUFFER, model.VertexSpecular().size() * sizeof(Vec3f), model.VertexSpecular().data(), GL_STATIC_DRAW );
+}
+
+
+void ModelObjectGPU::CreateVertexShininessVBO( const ModelObject& model )
+{
+	glGenBuffers( 1, &mVboVertexShininess );
+	glBindBuffer( GL_ARRAY_BUFFER, mVboVertexShininess );
+	glBufferData( GL_ARRAY_BUFFER, model.VertexShininess().size() * sizeof(float), model.VertexShininess().data(), GL_STATIC_DRAW );
+}
+
+
 void ModelObjectGPU::CreateTexture( const ModelObject& model )
 {
 	const std::string& texturePath = model.DiffuseTexturePath();
@@ -317,5 +496,145 @@ void ModelObjectGPU::CreateTexture( const ModelObject& model )
 	mDiffuseTexture = LoadTexture2D(texturePath.c_str());
 }
 
+
+void ModelObjectGPU::ReleaseBuffers()
+{
+	glDeleteBuffers( 1, &mVboPositions );
+	glDeleteBuffers( 1, &mVboVertexColor );
+	glDeleteBuffers( 1, &mVboVertexAmbient );
+	glDeleteBuffers( 1, &mVboVertexSpecular );
+	glDeleteBuffers( 1, &mVboVertexShininess );
+	glDeleteBuffers( 1, &mVboNormals );
+	glDeleteBuffers( 1, &mVboTextureCoords );
+
+
+	glDeleteTextures( 1, &mDiffuseTexture );
+
+
+	mVboPositions       = 0;
+	mVboVertexColor     = 0;
+	mVboVertexAmbient   = 0;
+	mVboVertexSpecular  = 0;
+	mVboVertexShininess = 0;
+	mVboNormals         = 0;
+	mVboTextureCoords   = 0;
+	mDiffuseTexture     = 0;
+}
+
+
+Mat44f Transform::Matrix() const
+{
+	Mat44f rotX = make_rotation_x( mRotation.x );
+	Mat44f rotY = make_rotation_y( mRotation.y );
+	Mat44f rotZ = make_rotation_z( mRotation.z );
+
+	Mat44f rotation = rotZ * rotY * rotX;
+
+	Mat44f translate = make_translation( mPosition );
+	Mat44f scale = make_scaling( mScale.x, mScale.y, mScale.z );
+
+	return translate * rotation * scale;
+}
+
+
+// Deprecated
+//ObjectInstance::ObjectInstance( ModelObjectGPU& modelObjectGPU, Transform transform )
+//	: mModelObjectGPU( modelObjectGPU )
+//	, mTransform( transform )
+//{
+//}
+//
+//
+//ObjectInstance::ObjectInstance( ModelObjectGPU& modelObjectGPU )
+//	: mModelObjectGPU( modelObjectGPU )
+//{
+//}
+//
+//
+//
+//const Transform& ObjectInstance::GetTransform() const
+//{
+//	return mTransform;
+//}
+//
+//
+//Transform& ObjectInstance::GetTransform()
+//{
+//	return mTransform;
+//}
+//
+//
+//const ModelObjectGPU& ObjectInstance::GetModel() const
+//{
+//	return mModelObjectGPU;
+//}
+//
+//
+//ModelObjectGPU& ObjectInstance::GetModel()
+//{
+//	return mModelObjectGPU;
+//}
+
+
+ObjectInstanceGroup::ObjectInstanceGroup( ModelObjectGPU& modelObjectGPU )
+	: mModelObjectGPU( modelObjectGPU )
+{
+}
+
+
+void ObjectInstanceGroup::CreateInstance( const Transform& transform )
+{
+	mTransformList.push_back( transform );
+}
+
+
+size_t ObjectInstanceGroup::GetInstanceCount()
+{
+	return mTransformList.size();
+}
+
+
+std::vector<Mat44f> ObjectInstanceGroup::GetProjCameraWorldArray(const Mat44f& projection, const Mat44f& world2camera) const
+{
+	std::vector<Mat44f> ret;
+	ret.reserve( mTransformList.size() );
+
+	for( const auto& transform : mTransformList )
+	{
+		ret.push_back( projection * world2camera * transform.Matrix() );
+	}
+
+	return ret;
+}
+
+
+const std::vector<Transform>& ObjectInstanceGroup::GetTransforms() const
+{
+	return mTransformList;
+}
+
+
+const Transform& ObjectInstanceGroup::GetTransform( size_t instanceIndex ) const
+{
+	return mTransformList.at( instanceIndex );
+}
+
+
+Transform& ObjectInstanceGroup::GetTransform( size_t instanceIndex )
+{
+	return mTransformList.at( instanceIndex );
+}
+
+
+const ModelObjectGPU& ObjectInstanceGroup::GetModel() const
+{
+	return mModelObjectGPU;
+}
+
+
+ModelObjectGPU& ObjectInstanceGroup::GetModel()
+{
+	return mModelObjectGPU;
+}
 
 

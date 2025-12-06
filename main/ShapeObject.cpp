@@ -114,9 +114,9 @@ ModelObject MakeCone( bool aCapped, std::size_t aSubdivs, Vec3f aColor, Transfor
 		float y = std::cos( angle );
 		float z = std::sin( angle );
 
-		pos.emplace_back( Vec3f{ 0.f, prevY, prevZ } );
+		pos.emplace_back(Vec3f{ 0.f, y, z });
 		pos.emplace_back( Vec3f{ 1.f, 0.f, 0.f } );
-		pos.emplace_back( Vec3f{ 0.f, y, z } );
+		pos.emplace_back(Vec3f{ 0.f, prevY, prevZ });
 
 		if( aCapped )
 		{

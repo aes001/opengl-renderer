@@ -335,6 +335,7 @@ int main() try
 
 		glUniform3f(2, 0.9f, 0.9f, 0.6f); // light diffuse
 		glUniform3f(3, 0.05f, 0.05f, 0.05f); // light ambient
+		glUniform3f(4, 0.5f, 0.05f, 0.05f); // light specular
 
 		glBindVertexArray( vao );
 		glActiveTexture( GL_TEXTURE0 );

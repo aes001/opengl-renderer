@@ -82,6 +82,8 @@ namespace
 	void glfw_callback_mouse_button_(GLFWwindow* window, int button, int action, int );
 
 	void updateCamera(State_& state);
+
+	ModelObject create_ship();
 }
 
 int main() try
@@ -319,7 +321,10 @@ int main() try
 
 	// Space Ship
 
+
+
 	// Create a transform for a cube
+	/*
 	Transform cubeTransform{
 		.mPosition{5.f, 0.f, 3.f},
 		.mRotation{0.785398f, 0.f, 0.f},
@@ -334,9 +339,10 @@ int main() try
 		.mScale{2.f, 2.f, 2.f}
 	};
 	ModelObject cylinderTest = MakeCylinder( true, 10, {0.7f, 0.7f, 0.7f}, cylinderTransform );
+	*/
 
 	// Combine the two model objects
-	ModelObject combined = CombineShapeModelObjects(cubeTest, cylinderTest);
+	ModelObject combined = create_ship();
 	const GLsizei spaceShipVertsCount = combined.Vertices().size();
 
 	//ModelObject cubeTest = MakeCylinder( true, 5, {0.7f, 0.f, 0.f}, cubeTransform );
@@ -361,8 +367,8 @@ int main() try
 		0,
 		0
 	);
-
 	glEnableVertexAttribArray( 0 );
+	
 	//colours
 	glBindBuffer( GL_ARRAY_BUFFER, cubeTestGPU.BufferId(kVboVertexColor) );
 	glVertexAttribPointer(
@@ -371,8 +377,8 @@ int main() try
 		0,
 		0
 	);
-
 	glEnableVertexAttribArray( 1 );
+
 	//normals
 	glBindBuffer(GL_ARRAY_BUFFER, cubeTestGPU.BufferId(kVboNormals));
 	glVertexAttribPointer(
@@ -381,6 +387,7 @@ int main() try
 		0,
 		0
 	);
+	glEnableVertexAttribArray(2);
 
 
 
@@ -642,4 +649,101 @@ namespace
 		if( window )
 			glfwDestroyWindow( window );
 	}
+}
+
+namespace 
+{
+	ModelObject create_ship() 
+	{
+		Vec3f base_colour = { 0.7f, 0.7f, 0.7f };
+		Vec3f red = { 0.8f, 0.1f, 0.1f };
+
+		// Create a transform for a cube
+		/*Transform cubeTransform{
+			.mPosition{5.f, 0.f, 3.f},
+			.mRotation{0.785398f, 0.f, 0.f},
+			.mScale{0.5f, 0.5f, 0.5f}
+		};
+		ModelObject cubeTest = MakeCube({ 0.8f, 0.8f, 0.8f }, cubeTransform);
+
+		// Create a transform for a cylinder
+		Transform cylinderTransform{
+			.mPosition{5.f, 7.f, 3.f},
+			.mRotation{2.f, 0.f, 0.f},
+			.mScale{2.f, 2.f, 2.f}
+		};
+		ModelObject cylinderTest = MakeCylinder(true, 10, { 0.7f, 0.7f, 0.7f }, cylinderTransform);
+		*/
+
+		Transform bodyTransform{
+			.mPosition{1.6f, 0.9f, 1.f},
+			.mRotation{0.f, 0.f, 0.f},
+			.mScale{1.7f, 0.2f, 0.2f}
+		};
+		ModelObject body = MakeCylinder(true, 32, base_colour, bodyTransform);
+
+		Transform leftNacelTransform{
+			.mPosition{2.5f, 1.6f, 0.2f},
+			.mRotation{0.f, 0.f, 0.f},
+			.mScale{2.2f, 0.1f, 0.1f}
+		};
+		ModelObject leftNacel = MakeCylinder(true, 32, base_colour, leftNacelTransform);
+
+		Transform rightNacelTransform{
+			.mPosition{2.5f, 1.6f, 1.8f},
+			.mRotation{0.f, 0.f, 0.f},
+			.mScale{2.2f, 0.1f, 0.1f}
+		};
+		ModelObject rightNacel = MakeCylinder(true, 16, base_colour, rightNacelTransform);
+
+		Transform saucerTransform{
+			.mPosition{1.f, 1.5f, 1.f},
+			.mRotation{0.f, 0.f, std::numbers::pi_v<float> / 2},
+			.mScale{0.1f, 1.f, 1.f}
+		};
+		ModelObject saucerSection = MakeCylinder(true, 32, base_colour, saucerTransform);
+
+		Transform leftArmTransform{
+			.mPosition{3.f, 1.2f, 1.4f},
+			.mRotation{0.8f, 0.f, 0.f},
+			.mScale{0.1f, 0.5f, 0.05f}
+		};
+		ModelObject leftArm = MakeCube(base_colour, leftArmTransform);
+
+		Transform rightArmTransform{
+			.mPosition{3.f, 1.2f, 0.6f},
+			.mRotation{-0.8f, 0.f, 0.f},
+			.mScale{0.1f, 0.5f, 0.05f}
+		};
+		ModelObject rightArm = MakeCube(base_colour, rightArmTransform);
+
+		Transform neckTransform{
+			.mPosition{1.6f, 1.2f, 1.f},
+			.mRotation{0.f, 0.f, std::numbers::pi_v<float> * 0.2f},
+			.mScale{0.15f, 0.4f, 0.075f}
+		};
+		ModelObject neck = MakeCube(base_colour, neckTransform);
+
+		Transform topSaucerTransform{
+			.mPosition{1.f, 1.6f, 1.f},
+			.mRotation{0.f, 0.f, std::numbers::pi_v<float> / 2},
+			.mScale{0.2f, 0.75f, 0.75f}
+		};
+		
+		ModelObject topSaucer = MakeCone(false, 32, base_colour, topSaucerTransform);
+
+		Transform bottomSaucerTransform{
+			.mPosition{1.f, 1.5f, 1.f},
+			.mRotation{0.f, 0.f, -std::numbers::pi_v<float> / 2},
+			.mScale{0.2f, 0.5f, 0.5f}
+		};
+		ModelObject bottomSaucer = MakeCone(false, 32, base_colour, bottomSaucerTransform);
+
+		// Combine the two model objects
+		ModelObject combined = CombineShapeModelObjects(body, saucerSection, topSaucer, bottomSaucer, leftNacel, rightNacel, neck, leftArm, rightArm);
+
+		return combined;
+	}
+
+
 }

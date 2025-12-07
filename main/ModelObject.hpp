@@ -20,6 +20,7 @@
 // Forward Declarations
 struct Vec3f;
 struct Mat44f;
+struct Mat33f;
 
 
 
@@ -173,6 +174,7 @@ struct Transform
 	Vec3f mScale   { 1.f, 1.f, 1.f };
 
 	Mat44f Matrix() const;
+	Mat33f NormalUpdateMatrix() const;
 };
 
 

@@ -26,12 +26,14 @@ void main()
 
 	vec3 vertPos = v2fPosition + v2fmodelTransform;
 	//specular light
+	vec3 LPos = uLightPosition - vertPos;
+	float distAttenuation = 10/(LPos[0]*LPos[0] + LPos[1]*LPos[1] + LPos[2]*LPos[2]);
+
 	vec3 V = normalize(-uCamPosition - vertPos);
-	vec3 L = normalize(uLightPosition - vertPos);
+	vec3 L = normalize(LPos);
 	vec3 sum = V + L;
 	vec3 H = normalize((sum)/sqrt(sum[0]*sum[0] + sum[1]*sum[1] + sum[2]*sum[2]));
-	vec3 specLight = uSpecLightColour * v2fSpecRef * pow( max(0.f, dot(H, normal)), v2fShininess);
-	//vec3 specLight = V;
+	vec3 specLight = distAttenuation * uSpecLightColour * v2fSpecRef * pow( max(0.f, dot(H, normal)), v2fShininess);
 
 
 	//apply simplfied blinn phong

@@ -385,8 +385,8 @@ int main() try
 	);
 	glEnableVertexAttribArray(2);
 
-	Vec3f pointLightPos = { 10.f, 10.f, 10.f };
-	Vec3f pointLightColour = { 1.f, 0.f, 0.f }; //red
+	Vec3f pointLightPos = { -18.f,  0.5f, 11.f };
+	Vec3f pointLightColour = { 1.f, 0.8f, 0.8f }; //white
 
 	// Reset State
 	glBindVertexArray( 0 );
@@ -704,7 +704,7 @@ namespace
 			.mRotation{0.f, 0.f, 0.f},
 			.mScale{2.2f, 0.1f, 0.1f}
 		};
-		ModelObject rightNacel = MakeCylinder(true, 16, base_colour, rightNacelTransform);
+		ModelObject rightNacel = MakeCylinder(true, 32, base_colour, rightNacelTransform);
 
 		Transform saucerTransform{
 			.mPosition{1.f, 1.5f, 1.f},

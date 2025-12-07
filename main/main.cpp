@@ -320,7 +320,7 @@ int main() try
 	glBindBuffer(GL_ARRAY_BUFFER, landingPadGPU.BufferId(kVboVertexSpecular));
 	glVertexAttribPointer(
 		3,
-		1, GL_FLOAT, GL_FALSE,
+		3, GL_FLOAT, GL_FALSE,
 		0,
 		0
 	);
@@ -385,8 +385,28 @@ int main() try
 	);
 	glEnableVertexAttribArray(2);
 
-	Vec3f pointLightPos = { -18.f,  0.5f, 11.f };
-	Vec3f pointLightColour = { 1.f, 0.8f, 0.8f }; //white
+	//specular reflectance
+	glBindBuffer(GL_ARRAY_BUFFER, shipModelGPU.BufferId(kVboVertexSpecular));
+	glVertexAttribPointer(
+		3,
+		3, GL_FLOAT, GL_FALSE,
+		0,
+		0
+	);
+	glEnableVertexAttribArray(3);
+
+	//shininess
+	glBindBuffer(GL_ARRAY_BUFFER, shipModelGPU.BufferId(kVboVertexShininess));
+	glVertexAttribPointer(
+		4,
+		1, GL_FLOAT, GL_FALSE,
+		0,
+		0
+	);
+	glEnableVertexAttribArray(4);
+
+	Vec3f pointLightPos = { 2.6f, 4.f, 3.f };
+	Vec3f pointLightColour = { 1.f, 0.f, 0.f }; //red
 
 	// Reset State
 	glBindVertexArray( 0 );
@@ -507,6 +527,11 @@ int main() try
 		// We need to use the GetProjCameraWorldArray() from the instance group so we can later animate the spaceship
 		std::vector<Mat44f> projectionList2 = shipModelInstance.GetProjCameraWorldArray(projection, world2camera);
 		glUniformMatrix4fv(locProj, (GLsizei) projectionList2.size(), GL_TRUE, projectionList2.data()[0].v );
+		//get ship translation
+		std::vector<std::array<float, 3>> shipTransformList = shipModelInstance.GetTranslationArray();
+		glUniform3fv(locModelTrans, (GLsizei)projectionList2.size(), shipTransformList.data()[0].data());
+
+
 		glBindVertexArray( vaoSpaceShip );
 		glDrawArraysInstanced( GL_TRIANGLES, 0, spaceShipVertsCount, shipModelInstance.GetInstanceCount());
 
@@ -665,89 +690,79 @@ namespace
 {
 	ModelObject create_ship() 
 	{
+		ShapeMaterial hullPlating
+		{
+			.mVertexColor = {0.4f, 0.4f, 0.4f},
+			.mSpecular = {0.846000, 0.846000, 0.846000},
+			.mShininess = 50.000000	
+		};
+
 		Vec3f base_colour = { 0.7f, 0.7f, 0.7f };
 		Vec3f red = { 0.8f, 0.1f, 0.1f };
-
-		// Create a transform for a cube
-		/*Transform cubeTransform{
-			.mPosition{5.f, 0.f, 3.f},
-			.mRotation{0.785398f, 0.f, 0.f},
-			.mScale{0.5f, 0.5f, 0.5f}
-		};
-		ModelObject cubeTest = MakeCube({ 0.8f, 0.8f, 0.8f }, cubeTransform);
-
-		// Create a transform for a cylinder
-		Transform cylinderTransform{
-			.mPosition{5.f, 7.f, 3.f},
-			.mRotation{2.f, 0.f, 0.f},
-			.mScale{2.f, 2.f, 2.f}
-		};
-		ModelObject cylinderTest = MakeCylinder(true, 10, { 0.7f, 0.7f, 0.7f }, cylinderTransform);
-		*/
 
 		Transform bodyTransform{
 			.mPosition{1.6f, 0.9f, 1.f},
 			.mRotation{0.f, 0.f, 0.f},
 			.mScale{1.7f, 0.2f, 0.2f}
 		};
-		ModelObject body = MakeCylinder(true, 32, base_colour, bodyTransform);
+		ModelObject body = MakeCylinder(true, 32, bodyTransform, hullPlating);
 
 		Transform leftNacelTransform{
 			.mPosition{2.5f, 1.6f, 0.2f},
 			.mRotation{0.f, 0.f, 0.f},
 			.mScale{2.2f, 0.1f, 0.1f}
 		};
-		ModelObject leftNacel = MakeCylinder(true, 32, base_colour, leftNacelTransform);
+		ModelObject leftNacel = MakeCylinder(true, 32, leftNacelTransform, hullPlating);
 
 		Transform rightNacelTransform{
 			.mPosition{2.5f, 1.6f, 1.8f},
 			.mRotation{0.f, 0.f, 0.f},
 			.mScale{2.2f, 0.1f, 0.1f}
 		};
-		ModelObject rightNacel = MakeCylinder(true, 32, base_colour, rightNacelTransform);
+		ModelObject rightNacel = MakeCylinder(true, 32, rightNacelTransform, hullPlating);
 
 		Transform saucerTransform{
 			.mPosition{1.f, 1.5f, 1.f},
 			.mRotation{0.f, 0.f, std::numbers::pi_v<float> / 2},
 			.mScale{0.1f, 1.f, 1.f}
 		};
-		ModelObject saucerSection = MakeCylinder(true, 32, base_colour, saucerTransform);
+		ModelObject saucerSection = MakeCylinder(true, 32, saucerTransform, hullPlating);
 
 		Transform leftArmTransform{
 			.mPosition{3.f, 1.2f, 1.4f},
 			.mRotation{0.8f, 0.f, 0.f},
 			.mScale{0.1f, 0.5f, 0.05f}
 		};
-		ModelObject leftArm = MakeCube(base_colour, leftArmTransform);
+		ModelObject leftArm = MakeCube(leftArmTransform, hullPlating);
 
 		Transform rightArmTransform{
 			.mPosition{3.f, 1.2f, 0.6f},
 			.mRotation{-0.8f, 0.f, 0.f},
 			.mScale{0.1f, 0.5f, 0.05f}
 		};
-		ModelObject rightArm = MakeCube(base_colour, rightArmTransform);
+		ModelObject rightArm = MakeCube(rightArmTransform, hullPlating);
 
 		Transform neckTransform{
 			.mPosition{1.6f, 1.2f, 1.f},
-			.mRotation{0.f, 0.f, std::numbers::pi_v<float> * 0.2f},
+			.mRotation{0.f, 0.f, std::numbers::pi_v<float> *0.2f},
 			.mScale{0.15f, 0.4f, 0.075f}
 		};
-		ModelObject neck = MakeCube(base_colour, neckTransform);
+		ModelObject neck = MakeCube(neckTransform, hullPlating);
 
 		Transform topSaucerTransform{
 			.mPosition{1.f, 1.6f, 1.f},
 			.mRotation{0.f, 0.f, std::numbers::pi_v<float> / 2},
 			.mScale{0.2f, 0.75f, 0.75f}
 		};
-		
-		ModelObject topSaucer = MakeCone(false, 32, base_colour, topSaucerTransform);
+
+		ModelObject topSaucer = MakeCone(false, 32, topSaucerTransform, hullPlating);
 
 		Transform bottomSaucerTransform{
 			.mPosition{1.f, 1.5f, 1.f},
 			.mRotation{0.f, 0.f, -std::numbers::pi_v<float> / 2},
 			.mScale{0.2f, 0.5f, 0.5f}
 		};
-		ModelObject bottomSaucer = MakeCone(false, 32, base_colour, bottomSaucerTransform);
+		ModelObject bottomSaucer = MakeCone(false, 32, bottomSaucerTransform, hullPlating);
 
 		// Combine the two model objects
 		ModelObject combined = CombineShapeModelObjects(body, saucerSection, topSaucer, bottomSaucer, leftNacel, rightNacel, neck, leftArm, rightArm);

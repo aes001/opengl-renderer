@@ -3,7 +3,7 @@
 layout( location = 0 ) in vec3 iPosition;
 layout( location = 1 ) in vec3 iColor;
 layout( location = 2 ) in vec3 iNormal;
-layout( location = 3 ) in float iSpecRef;
+layout( location = 3 ) in vec3 iSpecRef;
 layout( location = 4 ) in float iShininess;
 
 uniform mat4 uProjCameraWorld[2];
@@ -13,7 +13,7 @@ uniform vec3 uModelTransform[2];
 out vec3 v2fColor; // v2f = vertex to fragment
 out vec3 v2fNormal;
 out vec3 v2fPosition;
-out float v2fSpecRef;
+out vec3 v2fSpecRef;
 out float v2fShininess;
 out vec3 v2fmodelTransform;
 

@@ -126,11 +126,13 @@ ModelObject::ModelObject( const char* objPath, uint32_t loadFlags /*= kLoadEvery
 }
 
 
-ModelObject::ModelObject( std::vector<Vec3f> positions, std::vector<Vec3f> normals, std::vector<Vec3f> colours )
+ModelObject::ModelObject( std::vector<Vec3f> positions, std::vector<Vec3f> normals, std::vector<Vec3f> colours, std::vector<Vec3f> specular, std::vector<float> shininess )
 	: mVertices( std::move(positions) )
 	, mNormals( std::move(normals) )
 	, mVertexColours( std::move(colours) )
-	, mLoadFlags ( kLoadVertexColour )
+	, mVertexSpecular( std::move(specular) )
+	, mVertexShininess( std::move(shininess) )
+	, mLoadFlags ( kLoadVertexColour | kLoadVertexSpecular | kLoadVertexShininess )
 {
 }
 

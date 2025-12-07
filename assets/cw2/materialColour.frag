@@ -2,7 +2,7 @@
 in vec3 v2fColor;
 in vec3 v2fNormal;
 in vec3 v2fPosition;
-in float v2fSpecRef;
+in vec3 v2fSpecRef;
 in float v2fShininess;
 in vec3 v2fmodelTransform;
 
@@ -34,6 +34,7 @@ void main()
 	vec3 sum = V + L;
 	vec3 H = normalize((sum)/sqrt(sum[0]*sum[0] + sum[1]*sum[1] + sum[2]*sum[2]));
 	vec3 specLight = distAttenuation * uSpecLightColour * v2fSpecRef * pow( max(0.f, dot(H, normal)), v2fShininess);
+	//vec3 specLight = V;
 
 
 	//apply simplfied blinn phong

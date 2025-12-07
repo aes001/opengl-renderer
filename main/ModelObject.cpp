@@ -588,6 +588,26 @@ std::vector<Mat44f> ObjectInstanceGroup::GetProjCameraWorldArray(const Mat44f& p
 }
 
 
+std::vector<std::array<float, 3>> ObjectInstanceGroup::GetTranslationArray()
+{
+	std::vector<std::array<float, 3>> ret;
+	ret.reserve(GetInstanceCount());
+
+	for (const auto& transform : GetTransforms())
+	{
+		std::array<float, 3> transTemp{
+			transform.mPosition.x,
+			transform.mPosition.y,
+			transform.mPosition.z
+		};
+		ret.push_back(std::move(transTemp));
+	}
+
+	return std::move(ret);
+}
+
+
+
 const std::vector<Transform>& ObjectInstanceGroup::GetTransforms() const
 {
 	return mTransformList;

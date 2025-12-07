@@ -294,8 +294,8 @@ int main() try
 		0,
 		0
 	);
-
 	glEnableVertexAttribArray( 0 );
+
 	//colours
 	glBindBuffer( GL_ARRAY_BUFFER, landingPadGPU.BufferId(kVboVertexColor) );
 	glVertexAttribPointer(
@@ -304,8 +304,8 @@ int main() try
 		0,
 		0
 	);
-
 	glEnableVertexAttribArray( 1 );
+
 	//normals
 	glBindBuffer(GL_ARRAY_BUFFER, landingPadGPU.BufferId(kVboNormals));
 	glVertexAttribPointer(
@@ -314,53 +314,49 @@ int main() try
 		0,
 		0
 	);
-
-
 	glEnableVertexAttribArray(2);
 
+	//specular reflectance
+	glBindBuffer(GL_ARRAY_BUFFER, landingPadGPU.BufferId(kVboVertexSpecular));
+	glVertexAttribPointer(
+		3,
+		1, GL_FLOAT, GL_FALSE,
+		0,
+		0
+	);
+	glEnableVertexAttribArray(3);
+
+	//shininess
+	glBindBuffer(GL_ARRAY_BUFFER, landingPadGPU.BufferId(kVboVertexShininess));
+	glVertexAttribPointer(
+		4,
+		1, GL_FLOAT, GL_FALSE,
+		0,
+		0
+	);
+	glEnableVertexAttribArray(4);
 
 	// Space Ship
-
-
-
-	// Create a transform for a cube
-	/*
-	Transform cubeTransform{
-		.mPosition{5.f, 0.f, 3.f},
-		.mRotation{0.785398f, 0.f, 0.f},
-		.mScale{0.5f, 0.5f, 0.5f}
-	};
-	ModelObject cubeTest = MakeCube( {0.8f, 0.8f, 0.8f}, cubeTransform );
-
-	// Create a transform for a cylinder
-	Transform cylinderTransform{
-		.mPosition{5.f, 7.f, 3.f},
-		.mRotation{2.f, 0.f, 0.f},
-		.mScale{2.f, 2.f, 2.f}
-	};
-	ModelObject cylinderTest = MakeCylinder( true, 10, {0.7f, 0.7f, 0.7f}, cylinderTransform );
-	*/
-
 	// Combine the two model objects
-	ModelObject combined = create_ship();
-	const GLsizei spaceShipVertsCount = combined.Vertices().size();
+	ModelObject shipModel = create_ship();
+	const GLsizei spaceShipVertsCount = shipModel.Vertices().size();
 
 	//ModelObject cubeTest = MakeCylinder( true, 5, {0.7f, 0.f, 0.f}, cubeTransform );
 	//ModelObject cubeTest = MakeCone( true, 5, {0.8f, 0.8f, 0.8f}, cubeTransform );
 
 	// Creaete the vbos for the model object
-	ModelObjectGPU cubeTestGPU( combined );
+	ModelObjectGPU shipModelGPU(shipModel);
 
 	// Create an instance of the model object
 	// Makes the model object have a position that we can later modify
-	ObjectInstanceGroup cubeTestInstance( cubeTestGPU );
-	cubeTestInstance.CreateInstance({/* This is also a transform object like the ones we created for the cube and cylinder */});
+	ObjectInstanceGroup shipModelInstance(shipModelGPU);
+	shipModelInstance.CreateInstance({/* This is also a transform object like the ones we created for the cube and cylinder */});
 
 	GLuint vaoSpaceShip = 0;
 	glGenVertexArrays( 1, &vaoSpaceShip );
 	glBindVertexArray( vaoSpaceShip );
 	//positions
-	glBindBuffer( GL_ARRAY_BUFFER, cubeTestGPU.BufferId(kVboPositions) );
+	glBindBuffer( GL_ARRAY_BUFFER, shipModelGPU.BufferId(kVboPositions) );
 	glVertexAttribPointer(
 		0,
 		3, GL_FLOAT, GL_FALSE,
@@ -370,7 +366,7 @@ int main() try
 	glEnableVertexAttribArray( 0 );
 	
 	//colours
-	glBindBuffer( GL_ARRAY_BUFFER, cubeTestGPU.BufferId(kVboVertexColor) );
+	glBindBuffer( GL_ARRAY_BUFFER, shipModelGPU.BufferId(kVboVertexColor) );
 	glVertexAttribPointer(
 		1,
 		3, GL_FLOAT, GL_FALSE,
@@ -380,7 +376,7 @@ int main() try
 	glEnableVertexAttribArray( 1 );
 
 	//normals
-	glBindBuffer(GL_ARRAY_BUFFER, cubeTestGPU.BufferId(kVboNormals));
+	glBindBuffer(GL_ARRAY_BUFFER, shipModelGPU.BufferId(kVboNormals));
 	glVertexAttribPointer(
 		2,
 		3, GL_FLOAT, GL_FALSE,
@@ -389,7 +385,8 @@ int main() try
 	);
 	glEnableVertexAttribArray(2);
 
-
+	Vec3f pointLightPos = { 10.f, 10.f, 10.f };
+	Vec3f pointLightColour = { 1.f, 0.f, 0.f }; //red
 
 	// Reset State
 	glBindVertexArray( 0 );
@@ -479,15 +476,28 @@ int main() try
 		glUseProgram( prog2.programId() );
 
 		GLint locProj     = glGetUniformLocation( prog2.programId(), "uProjCameraWorld" );
+		GLint locModelTrans = glGetUniformLocation(prog2.programId(), "uModelTransform");
 		GLint locLightDir = glGetUniformLocation (prog2.programId(), "uLightDir" );
 		GLint locDiffuse  = glGetUniformLocation( prog2.programId(), "uLightDiffuse" );
 		GLint locAmbient  = glGetUniformLocation( prog2.programId(), "uSceneAmbient" );
 
+		GLint locCamPos = glGetUniformLocation(prog2.programId(), "uCamPosition");
+		GLint locLightPos = glGetUniformLocation(prog2.programId(), "uLightPosition");
+		GLint locSpecLightColour = glGetUniformLocation(prog2.programId(), "uSpecLightColour");
+
 		std::vector<Mat44f> projectionList = landingPadInstances.GetProjCameraWorldArray(projection, world2camera);
-		glUniformMatrix4fv(locProj, (GLsizei) projectionList.size(), GL_TRUE, projectionList.data()[0].v );
+		std::vector<std::array<float, 3>> transformList = landingPadInstances.GetTranslationArray();
+		glUniformMatrix4fv(locProj, (GLsizei)projectionList.size(), GL_TRUE, projectionList.data()[0].v);
+		glUniform3fv(locModelTrans, (GLsizei) projectionList.size(), transformList.data()[0].data());
+
 		glUniform3fv(locLightDir, 1, &lightDir.x);
 		glUniform3f(locDiffuse, 0.9f, 0.9f, 0.6f); // light diffuse
 		glUniform3f(locAmbient, 0.05f, 0.05f, 0.05f); // light ambient
+		glUniform3f(locCamPos, state.camControl.cameraPos[0], state.camControl.cameraPos[1], state.camControl.cameraPos[2]);
+		//specular light uniforms
+		glUniform3f(locLightPos, pointLightPos[0], pointLightPos[1], pointLightPos[2]);
+		glUniform3f(locSpecLightColour, pointLightColour[0], pointLightColour[1], pointLightColour[2]);
+
 		glBindVertexArray( vaoLandingPad );
 		glDrawArraysInstanced( GL_TRIANGLES, 0, landingPadVertsCount, landingPadInstances.GetInstanceCount());
 
@@ -495,10 +505,10 @@ int main() try
 
 		// Spaceship
 		// We need to use the GetProjCameraWorldArray() from the instance group so we can later animate the spaceship
-		std::vector<Mat44f> projectionList2 = cubeTestInstance.GetProjCameraWorldArray(projection, world2camera);
+		std::vector<Mat44f> projectionList2 = shipModelInstance.GetProjCameraWorldArray(projection, world2camera);
 		glUniformMatrix4fv(locProj, (GLsizei) projectionList2.size(), GL_TRUE, projectionList2.data()[0].v );
 		glBindVertexArray( vaoSpaceShip );
-		glDrawArraysInstanced( GL_TRIANGLES, 0, spaceShipVertsCount, cubeTestInstance.GetInstanceCount());
+		glDrawArraysInstanced( GL_TRIANGLES, 0, spaceShipVertsCount, shipModelInstance.GetInstanceCount());
 
 
 		// Cleanup
@@ -614,7 +624,7 @@ namespace
 			if(state.pressedKeys[GLFW_KEY_LEFT_SHIFT])
 				state.speedMod = 10;
 			else if(state.pressedKeys[GLFW_KEY_LEFT_CONTROL])
-				state.speedMod = 0.5;
+				state.speedMod = 0.2;
 			else
 				state.speedMod = 1;
 

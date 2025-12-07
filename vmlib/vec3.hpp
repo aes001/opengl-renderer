@@ -5,6 +5,7 @@
 #include <cmath>
 #include <cassert>
 #include <cstdlib>
+#include <array>
 
 struct Vec3f
 {
@@ -22,6 +23,8 @@ struct Vec3f
 		assert( aI < 3 );
 		return aI[&x]; // This is a bit sketchy.
 	}
+
+	std::array<float, 3> GetArray() { return std::array<float, 3>({ x, y, z }); };
 };
 
 

@@ -59,6 +59,7 @@ namespace
 
 	struct State_
 	{
+		std::vector<PointLight>* lights;
 		std::vector<ShaderProgram*> progs;
 		float dt;
 		float speedMod;
@@ -409,13 +410,14 @@ int main() try
 
 	//LIGHTS
 	#define N_LIGHTS 4
-	PointLight l1 = { { 2.6f, 4.f, 3.f, 0.f}, { 1.f, 0.f, 0.f, 0.f} };
-	PointLight l2 = { { 4.6f, 2.f, 1.f, 0.f}, { 0.f, 1.f, 0.f, 0.f} };
-	PointLight l3 = { { 3.6f, 1.f, 5.f, 0.f}, { 0.f, 0.f, 1.f, 0.f} };
+	PointLight l1 = { { 0.6f, 3.f, 0.5f, 0.f}, { 1.f, 0.f, 0.f, 1.f} };
+	PointLight l2 = { { 4.6f, 2.f, 1.f, 0.f}, { 0.f, 1.f, 0.f, 1.f} };
+	PointLight l3 = { { 3.6f, 1.f, 5.f, 0.f}, { 0.f, 0.f, 1.f, 1.f} };
 	std::vector<PointLight> lights(N_LIGHTS);
 	lights[0] = l1;
 	lights[1] = l2;
 	lights[2] = l3;
+	state.lights = &lights;
 
 	GLuint uboLights;
 	glGenBuffers(1, &uboLights);
@@ -564,7 +566,6 @@ int main() try
 		std::vector<Mat33f> shipNormalUpdates = shipModelInstance.GetNormalUpdateArray();
 		glUniformMatrix3fv(locNormalTrans, (GLsizei)shipNormalUpdates.size(), GL_TRUE, shipNormalUpdates.data()[0].v);
 
-
 		glBindVertexArray( vaoSpaceShip );
 		glDrawArraysInstanced( GL_TRIANGLES, 0, spaceShipVertsCount, shipModelInstance.GetInstanceCount());
 
@@ -612,17 +613,25 @@ namespace
 			return;
 		}
 
-		if (auto* state = static_cast<State_*>(glfwGetWindowUserPointer(aWindow)))
+		auto* state = static_cast<State_*>(glfwGetWindowUserPointer(aWindow));
+
+		if( GLFW_PRESS == aAction )
 		{
-			if( GLFW_PRESS == aAction )
-			{
-				state->pressedKeys[aKey] = true;
-			}
-			else if( aAction == GLFW_RELEASE )
-			{
-				state->pressedKeys[aKey] = false;
-			}
+			state->pressedKeys[aKey] = true;
 		}
+		else if( aAction == GLFW_RELEASE )
+		{
+			state->pressedKeys[aKey] = false;
+		}
+
+		//key actions
+		if (GLFW_KEY_1 == aKey && GLFW_PRESS == aAction)
+			(state->lights)->at(0).lColour.w = (state->lights)->at(0).lColour.w == 1.f ? 0.f : 1.f; //toggle light on/off
+		if (GLFW_KEY_2 == aKey && GLFW_PRESS == aAction)
+			(state->lights)->at(1).lColour.w = (state->lights)->at(1).lColour.w == 1.f ? 0.f : 1.f;
+		if (GLFW_KEY_3 == aKey && GLFW_PRESS == aAction)
+			(state->lights)->at(2).lColour.w = (state->lights)->at(2).lColour.w == 1.f ? 0.f : 1.f;
+
 	}
 
 

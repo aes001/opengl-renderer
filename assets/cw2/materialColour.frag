@@ -28,13 +28,20 @@ layout(std140) uniform LightBlock {
 
 vec3 CalcPointLight(PointLight light, vec3 normal, vec3 fragPos, vec3 view)
 {
+	if(light.lColour[3] == 0) //check if light off
+		return vec3(0.f, 0.f, 0.f);
+
 	vec3 LPos = vec3(light.lPosition) - fragPos;
 	float distAttenuation = 10/(LPos[0]*LPos[0] + LPos[1]*LPos[1] + LPos[2]*LPos[2]); //intensity scaling factor of 10
 
 	vec3 L = normalize(LPos);
 	vec3 sum = view + L;
 	vec3 H = normalize((sum)/sqrt(sum[0]*sum[0] + sum[1]*sum[1] + sum[2]*sum[2]));
-	return distAttenuation * vec3(light.lColour) * v2fSpecRef * pow( max(0.f, dot(H, normal)), v2fShininess);
+	vec3 specular = distAttenuation * vec3(light.lColour) * v2fSpecRef * pow( max(0.f, dot(H, normal)), v2fShininess);
+
+	vec3 diffuse = 0.2* distAttenuation * vec3(light.lColour) * max(0.f, dot(L, normal));
+
+	return (specular + diffuse) ;
 
 
 }

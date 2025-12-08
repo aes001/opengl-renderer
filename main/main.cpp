@@ -30,6 +30,7 @@ extern "C"
 #include "ModelObject.hpp"
 #include "ShapeObject.hpp"
 #include "LookAt.hpp"
+#include "AnimationTools.hpp"
 
 
 namespace
@@ -279,8 +280,8 @@ int main() try
 	const GLsizei landingPadVertsCount = static_cast<GLsizei>( landingPad.Vertices().size() );
 
 	ObjectInstanceGroup landingPadInstances( landingPadGPU );
-	landingPadInstances.CreateInstance( Transform( { .mPosition{-19.f,  -0.97f, 10.f} } ) );
-	landingPadInstances.CreateInstance( Transform( { .mPosition{-34.7f, -0.97f, 1.f } } ) );
+	landingPadInstances.CreateInstance( { .mPosition{-19.f,  -0.97f, 10.f} } ); // Near spawn
+	landingPadInstances.CreateInstance( { .mPosition{-34.7f, -0.97f, 1.f } } ); // Bay
 
 
 	GLuint vaoLandingPad = 0;
@@ -321,46 +322,144 @@ int main() try
 
 	// Space Ship
 
-
-
-	// Create a transform for a cube
-	/*
-	Transform cubeTransform{
-		.mPosition{5.f, 0.f, 3.f},
-		.mRotation{0.785398f, 0.f, 0.f},
-		.mScale{0.5f, 0.5f, 0.5f}
-	};
-	ModelObject cubeTest = MakeCube( {0.8f, 0.8f, 0.8f}, cubeTransform );
-
-	// Create a transform for a cylinder
-	Transform cylinderTransform{
-		.mPosition{5.f, 7.f, 3.f},
-		.mRotation{2.f, 0.f, 0.f},
-		.mScale{2.f, 2.f, 2.f}
-	};
-	ModelObject cylinderTest = MakeCylinder( true, 10, {0.7f, 0.7f, 0.7f}, cylinderTransform );
-	*/
-
 	// Combine the two model objects
-	ModelObject combined = create_ship();
-	const GLsizei spaceShipVertsCount = combined.Vertices().size();
-
-	//ModelObject cubeTest = MakeCylinder( true, 5, {0.7f, 0.f, 0.f}, cubeTransform );
-	//ModelObject cubeTest = MakeCone( true, 5, {0.8f, 0.8f, 0.8f}, cubeTransform );
+	ModelObject spaceShipModel = create_ship();
+	const GLsizei spaceShipVertsCount = spaceShipModel.Vertices().size();
 
 	// Creaete the vbos for the model object
-	ModelObjectGPU cubeTestGPU( combined );
+	ModelObjectGPU spaceShipModelGPU( spaceShipModel );
 
 	// Create an instance of the model object
 	// Makes the model object have a position that we can later modify
-	ObjectInstanceGroup cubeTestInstance( cubeTestGPU );
-	cubeTestInstance.CreateInstance({/* This is also a transform object like the ones we created for the cube and cylinder */});
+
+	Transform spaceShipInitialTransform{
+		.mPosition{ -34.7f, -0.97f, 1.f },
+		.mRotation{ 0.f, 0.f, 0.f },
+		.mScale{ 1.f, 1.f, 1.f }
+	};
+	ObjectInstanceGroup spaceShipInstances( spaceShipModelGPU );
+	spaceShipInstances.CreateInstance( spaceShipInitialTransform );
+
+	std::vector<KeyFramedFloat> spaceShipAnimatedFloats =
+		[&] ()
+		{
+			std::vector<KeyFramedFloat> ret;
+
+
+			ret.push_back({});
+			KeyFramedFloat& spaceShipYKeyFrames = ret.back();
+			FloatKeyFrame spaceShipY{
+				spaceShipInitialTransform.mPosition.y,
+				10.f,
+				ShapingFunctions::Smoothstep
+			};
+
+			FloatKeyFrameGenerator shipYKFG(spaceShipY);
+
+			spaceShipYKeyFrames.InsertKeyframe(spaceShipY);
+
+			spaceShipYKeyFrames.InsertKeyframe(
+				shipYKFG.GenerateNext(5.f, 5.f, ShapingFunctions::Smoothstep)
+			);
+
+
+
+
+
+			FloatKeyFrame spaceShipRotY{
+				spaceShipInitialTransform.mRotation.y,
+				10.f,
+				ShapingFunctions::Polynomial<4>
+			};
+			ret.emplace_back(spaceShipRotY);
+			KeyFramedFloat& ssYRot = ret.back();
+			FloatKeyFrameGenerator shipRotYKFG(spaceShipRotY);
+
+			ssYRot.InsertKeyframe( shipRotYKFG.GenerateNext(1.5708f, 10.f, ShapingFunctions::Polynomial<4>) );
+
+
+
+			// Transform the whole ship
+			Vec3f spaceShipPositionAfterLiftOff{
+				spaceShipInitialTransform.mPosition.x,
+				shipYKFG.GetValue(),
+				spaceShipInitialTransform.mPosition.z
+			};
+
+			Vec3f spaceShipForward{
+				cosf(spaceShipInitialTransform.mRotation.x) * sinf(shipRotYKFG.GetValue()),
+				sinf(spaceShipInitialTransform.mRotation.x),
+				cosf(spaceShipInitialTransform.mRotation.x) * cosf(shipRotYKFG.GetValue())
+			};
+
+			spaceShipForward = normalize(spaceShipForward);
+
+			Vec3f newSpaceShipPosition  = (spaceShipForward * 30.f) + spaceShipPositionAfterLiftOff;
+
+			spaceShipYKeyFrames.InsertKeyframe({
+				newSpaceShipPosition.y,
+				2.f,
+				ShapingFunctions::PolynomialEaseOut<3>
+			});
+
+
+			FloatKeyFrame ssInitialXKF{
+				spaceShipPositionAfterLiftOff.x,
+				15.f,
+				ShapingFunctions::PolynomialEaseOut<3>
+			};
+			ret.emplace_back(ssInitialXKF);
+			KeyFramedFloat& ssXPos = ret.back();
+
+			ssXPos.InsertKeyframe({
+				spaceShipPositionAfterLiftOff.x,
+				2.f,
+				ShapingFunctions::PolynomialEaseOut<3>
+			});
+
+			ssXPos.InsertKeyframe({
+				newSpaceShipPosition.x,
+				0.f,
+				ShapingFunctions::PolynomialEaseOut<3>
+			});
+
+			FloatKeyFrame ssInitialZKF{
+				spaceShipPositionAfterLiftOff.z,
+				15.f,
+				ShapingFunctions::PolynomialEaseOut<3>
+			};
+			ret.emplace_back(ssInitialZKF);
+			KeyFramedFloat& ssZPos = ret.back();
+
+			ssZPos.InsertKeyframe({
+				newSpaceShipPosition.z,
+				2.f,
+				ShapingFunctions::PolynomialEaseOut<3>
+				});
+
+
+			ssZPos.InsertKeyframe({
+				newSpaceShipPosition.z,
+				2.f,
+				ShapingFunctions::PolynomialEaseOut<3>
+			});
+
+
+			return ret;
+		} ();
+
+	for( auto& kf : spaceShipAnimatedFloats )
+	{
+		kf.Play();
+	}
+
+
 
 	GLuint vaoSpaceShip = 0;
 	glGenVertexArrays( 1, &vaoSpaceShip );
 	glBindVertexArray( vaoSpaceShip );
 	//positions
-	glBindBuffer( GL_ARRAY_BUFFER, cubeTestGPU.BufferId(kVboPositions) );
+	glBindBuffer( GL_ARRAY_BUFFER, spaceShipModelGPU.BufferId(kVboPositions) );
 	glVertexAttribPointer(
 		0,
 		3, GL_FLOAT, GL_FALSE,
@@ -368,9 +467,9 @@ int main() try
 		0
 	);
 	glEnableVertexAttribArray( 0 );
-	
+
 	//colours
-	glBindBuffer( GL_ARRAY_BUFFER, cubeTestGPU.BufferId(kVboVertexColor) );
+	glBindBuffer( GL_ARRAY_BUFFER, spaceShipModelGPU.BufferId(kVboVertexColor) );
 	glVertexAttribPointer(
 		1,
 		3, GL_FLOAT, GL_FALSE,
@@ -380,7 +479,7 @@ int main() try
 	glEnableVertexAttribArray( 1 );
 
 	//normals
-	glBindBuffer(GL_ARRAY_BUFFER, cubeTestGPU.BufferId(kVboNormals));
+	glBindBuffer(GL_ARRAY_BUFFER, spaceShipModelGPU.BufferId(kVboNormals));
 	glVertexAttribPointer(
 		2,
 		3, GL_FLOAT, GL_FALSE,
@@ -495,10 +594,17 @@ int main() try
 
 		// Spaceship
 		// We need to use the GetProjCameraWorldArray() from the instance group so we can later animate the spaceship
-		std::vector<Mat44f> projectionList2 = cubeTestInstance.GetProjCameraWorldArray(projection, world2camera);
+		Transform& spaceShipOTrans = spaceShipInstances.GetTransform(0);
+
+		spaceShipOTrans.mPosition.y = spaceShipAnimatedFloats[0].Update(state.dt);
+		spaceShipOTrans.mRotation.y = spaceShipAnimatedFloats[1].Update(state.dt);
+		spaceShipOTrans.mPosition.x = spaceShipAnimatedFloats[2].Update(state.dt);
+		spaceShipOTrans.mPosition.z = spaceShipAnimatedFloats[3].Update(state.dt);
+
+		std::vector<Mat44f> projectionList2 = spaceShipInstances.GetProjCameraWorldArray(projection, world2camera);
 		glUniformMatrix4fv(locProj, (GLsizei) projectionList2.size(), GL_TRUE, projectionList2.data()[0].v );
 		glBindVertexArray( vaoSpaceShip );
-		glDrawArraysInstanced( GL_TRIANGLES, 0, spaceShipVertsCount, cubeTestInstance.GetInstanceCount());
+		glDrawArraysInstanced( GL_TRIANGLES, 0, spaceShipVertsCount, spaceShipInstances.GetInstanceCount());
 
 
 		// Cleanup
@@ -512,7 +618,6 @@ int main() try
 	}
 
 	// Cleanup.
-	//TODO: additional cleanup
 	for( auto& prog : state.progs )
 	{
 		prog = nullptr;
@@ -651,9 +756,9 @@ namespace
 	}
 }
 
-namespace 
+namespace
 {
-	ModelObject create_ship() 
+	ModelObject create_ship()
 	{
 		Vec3f base_colour = { 0.7f, 0.7f, 0.7f };
 		Vec3f red = { 0.8f, 0.1f, 0.1f };
@@ -729,7 +834,7 @@ namespace
 			.mRotation{0.f, 0.f, std::numbers::pi_v<float> / 2},
 			.mScale{0.2f, 0.75f, 0.75f}
 		};
-		
+
 		ModelObject topSaucer = MakeCone(false, 32, base_colour, topSaucerTransform);
 
 		Transform bottomSaucerTransform{

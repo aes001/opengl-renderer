@@ -536,6 +536,9 @@ int main() try
 		//get ship translation
 		std::vector<std::array<float, 3>> shipTransformList = shipModelInstance.GetTranslationArray();
 		glUniform3fv(locModelTrans, (GLsizei)projectionList2.size(), shipTransformList.data()[0].data());
+		//get normal updates
+		std::vector<Mat33f> shipNormalUpdates = shipModelInstance.GetNormalUpdateArray();
+		glUniformMatrix3fv(locNormalTrans, (GLsizei)shipNormalUpdates.size(), GL_TRUE, shipNormalUpdates.data()[0].v);
 
 
 		glBindVertexArray( vaoSpaceShip );

@@ -29,12 +29,12 @@ vec3 CalcPointLight(PointLight light, vec3 normal, vec3 fragPos, vec3 view)
 		return vec3(0.f, 0.f, 0.f);
 
 	vec3 LPos = vec3(light.lPosition) - fragPos;
-	float distAttenuation = 10/(LPos[0]*LPos[0] + LPos[1]*LPos[1] + LPos[2]*LPos[2]); //intensity scaling factor of 10
+	float distAttenuation = 50/(LPos[0]*LPos[0] + LPos[1]*LPos[1] + LPos[2]*LPos[2]); //intensity scaling factor of 50
 
 	vec3 L = normalize(LPos);
 	vec3 sum = view + L;
 	vec3 H = normalize((sum)/sqrt(sum[0]*sum[0] + sum[1]*sum[1] + sum[2]*sum[2]));
-	vec3 specular = distAttenuation * vec3(light.lColour) * 0.5 * pow( max(0.f, dot(H, normal)), 100); //0.5 = specular reflectiveness, 10 = shininess
+	vec3 specular = distAttenuation * vec3(light.lColour) * 0.5 * pow( max(0.f, dot(H, normal)), 100); //0.5 = specular reflectiveness, 100 = shininess
 
 	vec3 diffuse = 0.2* distAttenuation * vec3(light.lColour) * max(0.f, dot(L, normal));
 

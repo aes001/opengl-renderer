@@ -61,6 +61,8 @@ namespace
 	{
 		std::vector<PointLight>* lights;
 		std::vector<ShaderProgram*> progs;
+		const Vec3f diffuseLight = { 0.9f, 0.9f, 0.6f };
+		Vec3f currentGlobalLight;
 		float dt;
 		float speedMod;
 		bool pressedKeys[KEY_COUNT_GLFW] = { false };
@@ -409,10 +411,13 @@ int main() try
 	glEnableVertexAttribArray(4);
 
 	//LIGHTS
-	#define N_LIGHTS 4
+	state.currentGlobalLight = state.diffuseLight;
+
+	#define N_LIGHTS 3
+	//lights: position, colour
 	PointLight l1 = { { 0.6f, 3.f, 0.5f, 0.f}, { 1.f, 0.f, 0.f, 1.f} };
 	PointLight l2 = { { 4.6f, 2.f, 1.f, 0.f}, { 0.f, 1.f, 0.f, 1.f} };
-	PointLight l3 = { { 3.6f, 1.f, 5.f, 0.f}, { 0.f, 0.f, 1.f, 1.f} };
+	PointLight l3 = { { -18.f,  1.97f, 11.f, 0.f}, { 0.9f, 0.5f, 0.f, 1.f} };
 	std::vector<PointLight> lights(N_LIGHTS);
 	lights[0] = l1;
 	lights[1] = l2;
@@ -507,7 +512,7 @@ int main() try
 
 		Vec3f lightDir = normalize(Vec3f{ -1.f, 1.f, 0.5f }); // light direction
 		glUniform3fv(1, 1, &lightDir.x);
-		glUniform3f(2, 0.9f, 0.9f, 0.6f); // light diffuse
+		glUniform3f(2, state.currentGlobalLight[0], state.currentGlobalLight[1], state.currentGlobalLight[2] ); // light diffuse: 0.9f, 0.9f, 0.6f
 		glUniform3f(3, 0.05f, 0.05f, 0.05f); // light ambient
 
 		//camera
@@ -550,7 +555,7 @@ int main() try
 		glUniformMatrix3fv(locNormalTrans, (GLsizei)normalUpdates.size(), GL_TRUE, normalUpdates.data()[0].v);
 
 		glUniform3fv(locLightDir, 1, &lightDir.x);
-		glUniform3f(locDiffuse, 0.9f, 0.9f, 0.6f); // light diffuse
+		glUniform3f(locDiffuse, state.currentGlobalLight[0], state.currentGlobalLight[1], state.currentGlobalLight[2]); // light diffuse
 		glUniform3f(locAmbient, 0.05f, 0.05f, 0.05f); // light ambient
 		glUniform3f(locCamPos, state.camControl.cameraPos[0], state.camControl.cameraPos[1], state.camControl.cameraPos[2]);
 		//specular light uniforms
@@ -640,7 +645,8 @@ namespace
 			(state->lights)->at(1).lColour.w = (state->lights)->at(1).lColour.w == 1.f ? 0.f : 1.f;
 		if (GLFW_KEY_3 == aKey && GLFW_PRESS == aAction)
 			(state->lights)->at(2).lColour.w = (state->lights)->at(2).lColour.w == 1.f ? 0.f : 1.f;
-
+		if (GLFW_KEY_4 == aKey && GLFW_PRESS == aAction)
+			state->currentGlobalLight = state->currentGlobalLight == Vec3f{0.f, 0.f, 0.f} ? state->diffuseLight : Vec3f{0.f, 0.f, 0.f};
 	}
 
 

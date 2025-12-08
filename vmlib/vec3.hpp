@@ -119,6 +119,13 @@ Vec3f& operator/=( Vec3f& aLeft, float aRight ) noexcept
 	return aLeft;
 }
 
+constexpr
+bool operator==(const Vec3f& aLeft, const Vec3f &aRight) noexcept
+{
+	return aLeft.x == aRight.x && 
+		   aLeft.y == aRight.y && 
+		   aLeft.z == aRight.z;
+}
 
 // A few common functions:
 

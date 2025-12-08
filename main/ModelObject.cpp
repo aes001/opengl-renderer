@@ -608,6 +608,19 @@ std::vector<std::array<float, 3>> ObjectInstanceGroup::GetTranslationArray()
 	return std::move(ret);
 }
 
+std::vector<Mat33f> ObjectInstanceGroup::GetNormalUpdateArray() const
+{
+	std::vector<Mat33f> ret;
+	ret.reserve(mTransformList.size());
+
+	for (const auto& transform : GetTransforms())
+	{
+		ret.push_back(transform.NormalUpdateMatrix());
+	}
+
+	return ret;
+}
+
 
 
 const std::vector<Transform>& ObjectInstanceGroup::GetTransforms() const

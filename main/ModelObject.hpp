@@ -230,6 +230,7 @@ public:
 
 	std::vector<Mat44f> GetProjCameraWorldArray(const Mat44f& projection, const Mat44f& world2camera) const;
 	std::vector<std::array<float, 3>> GetTranslationArray();
+	std::vector<Mat33f> GetNormalUpdateArray() const;
 
 	const std::vector<Transform>& GetTransforms() const;
 

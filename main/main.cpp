@@ -25,6 +25,7 @@ extern "C"
 
 #include "../vmlib/vec4.hpp"
 #include "../vmlib/mat44.hpp"
+#include "../vmlib/mat33.hpp"
 
 #include "defaults.hpp"
 #include "ModelObject.hpp"
@@ -497,6 +498,7 @@ int main() try
 
 		GLint locProj     = glGetUniformLocation( prog2.programId(), "uProjCameraWorld" );
 		GLint locModelTrans = glGetUniformLocation(prog2.programId(), "uModelTransform");
+		GLint locNormalTrans = glGetUniformLocation(prog2.programId(), "uNormalTransform");
 		GLint locLightDir = glGetUniformLocation (prog2.programId(), "uLightDir" );
 		GLint locDiffuse  = glGetUniformLocation( prog2.programId(), "uLightDiffuse" );
 		GLint locAmbient  = glGetUniformLocation( prog2.programId(), "uSceneAmbient" );
@@ -504,11 +506,15 @@ int main() try
 		GLint locCamPos = glGetUniformLocation(prog2.programId(), "uCamPosition");
 		GLint locLightPos = glGetUniformLocation(prog2.programId(), "uLightPosition");
 		GLint locSpecLightColour = glGetUniformLocation(prog2.programId(), "uSpecLightColour");
-
+		//get camera projections
 		std::vector<Mat44f> projectionList = landingPadInstances.GetProjCameraWorldArray(projection, world2camera);
-		std::vector<std::array<float, 3>> transformList = landingPadInstances.GetTranslationArray();
 		glUniformMatrix4fv(locProj, (GLsizei)projectionList.size(), GL_TRUE, projectionList.data()[0].v);
+		//get translations
+		std::vector<std::array<float, 3>> transformList = landingPadInstances.GetTranslationArray();	
 		glUniform3fv(locModelTrans, (GLsizei) projectionList.size(), transformList.data()[0].data());
+		//get normal updates
+		std::vector<Mat33f> normalUpdates = landingPadInstances.GetNormalUpdateArray();
+		glUniformMatrix3fv(locNormalTrans, (GLsizei)normalUpdates.size(), GL_TRUE, normalUpdates.data()[0].v);
 
 		glUniform3fv(locLightDir, 1, &lightDir.x);
 		glUniform3f(locDiffuse, 0.9f, 0.9f, 0.6f); // light diffuse

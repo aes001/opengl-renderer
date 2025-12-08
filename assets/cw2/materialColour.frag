@@ -27,7 +27,7 @@ void main()
 	vec3 vertPos = v2fPosition + v2fmodelTransform;
 	//specular light
 	vec3 LPos = uLightPosition - vertPos;
-	float distAttenuation = 10/(LPos[0]*LPos[0] + LPos[1]*LPos[1] + LPos[2]*LPos[2]);
+	float distAttenuation = 10/(LPos[0]*LPos[0] + LPos[1]*LPos[1] + LPos[2]*LPos[2]); //intensity scaling factor of 10
 
 	vec3 V = normalize(-uCamPosition - vertPos);
 	vec3 L = normalize(LPos);

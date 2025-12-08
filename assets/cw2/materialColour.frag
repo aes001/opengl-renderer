@@ -13,9 +13,6 @@ uniform vec3 uLightDiffuse;
 uniform vec3 uSceneAmbient;
 
 uniform vec3 uCamPosition;
-//need one per light?
-//uniform vec3 uLightPosition;
-//uniform vec3 uSpecLightColour;
 
 struct PointLight {
     vec4 lPosition;
@@ -41,8 +38,7 @@ vec3 CalcPointLight(PointLight light, vec3 normal, vec3 fragPos, vec3 view)
 
 	vec3 diffuse = 0.2* distAttenuation * vec3(light.lColour) * max(0.f, dot(L, normal));
 
-	return (specular + diffuse) ;
-
+	return (specular + diffuse);
 
 }
 

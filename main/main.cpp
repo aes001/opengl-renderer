@@ -425,10 +425,15 @@ int main() try
 	glBufferData(GL_UNIFORM_BUFFER, sizeof(PointLight)* N_LIGHTS, nullptr, GL_DYNAMIC_DRAW);
 	glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
+	//bind to material shader
 	GLuint blockIndex = glGetUniformBlockIndex(prog2.programId(), "LightBlock");
 	glUniformBlockBinding(prog2.programId(), blockIndex, 0);
 	glBindBufferBase(GL_UNIFORM_BUFFER, 0, uboLights);
 
+	//bind to default shader
+	GLuint blockIndexdefault = glGetUniformBlockIndex(prog.programId(), "LightBlock");
+	glUniformBlockBinding(prog.programId(), blockIndexdefault, 0);
+	glBindBufferBase(GL_UNIFORM_BUFFER, 0, uboLights);
 
 	// Reset State
 	glBindVertexArray( 0 );
@@ -497,7 +502,7 @@ int main() try
 		// Rendering the terrain
 		glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
 		glUseProgram( prog.programId() );
-
+		GLint locCamPosTerrain = glGetUniformLocation(prog.programId(), "uCamPosition");
 		glUniformMatrix4fv(0, 1, GL_TRUE, projCameraWorld.v);
 
 		Vec3f lightDir = normalize(Vec3f{ -1.f, 1.f, 0.5f }); // light direction
@@ -505,6 +510,15 @@ int main() try
 		glUniform3f(2, 0.9f, 0.9f, 0.6f); // light diffuse
 		glUniform3f(3, 0.05f, 0.05f, 0.05f); // light ambient
 
+		//camera
+		glUniform3f(locCamPosTerrain, state.camControl.cameraPos[0], state.camControl.cameraPos[1], state.camControl.cameraPos[2]);
+
+		//lights
+		glBindBuffer(GL_UNIFORM_BUFFER, uboLights);
+		glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(PointLight) * lights.size(), lights.data());
+		glBindBuffer(GL_UNIFORM_BUFFER, 0);
+
+		//action
 		glBindVertexArray( vao );
 		glActiveTexture( GL_TEXTURE0 );
 		glBindTexture( GL_TEXTURE_2D, terrainGPU.BufferId(kDiffuseTexture) );
@@ -525,8 +539,6 @@ int main() try
 		GLint locAmbient  = glGetUniformLocation( prog2.programId(), "uSceneAmbient" );
 
 		GLint locCamPos = glGetUniformLocation(prog2.programId(), "uCamPosition");
-		GLint locLightPos = glGetUniformLocation(prog2.programId(), "uLightPosition");
-		GLint locSpecLightColour = glGetUniformLocation(prog2.programId(), "uSpecLightColour");
 		//get camera projections
 		std::vector<Mat44f> projectionList = landingPadInstances.GetProjCameraWorldArray(projection, world2camera);
 		glUniformMatrix4fv(locProj, (GLsizei)projectionList.size(), GL_TRUE, projectionList.data()[0].v);
@@ -542,13 +554,10 @@ int main() try
 		glUniform3f(locAmbient, 0.05f, 0.05f, 0.05f); // light ambient
 		glUniform3f(locCamPos, state.camControl.cameraPos[0], state.camControl.cameraPos[1], state.camControl.cameraPos[2]);
 		//specular light uniforms
-		//glUniform3f(locLightPos, pointLightPos[0], pointLightPos[1], pointLightPos[2]);
-		//glUniform3f(locSpecLightColour, pointLightColour[0], pointLightColour[1], pointLightColour[2]);
 
 		glBindBuffer(GL_UNIFORM_BUFFER, uboLights);
 		glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(PointLight)* lights.size(), lights.data());
 		glBindBuffer(GL_UNIFORM_BUFFER, 0);
-
 
 		glBindVertexArray( vaoLandingPad );
 		glDrawArraysInstanced( GL_TRIANGLES, 0, landingPadVertsCount, landingPadInstances.GetInstanceCount());
@@ -735,8 +744,8 @@ namespace
 		ShapeMaterial hullPlating
 		{
 			.mVertexColor = {0.4f, 0.4f, 0.4f},
-			.mSpecular = {0.846000, 0.846000, 0.846000},
-			.mShininess = 50.000000	
+			.mSpecular = {0.846f, 0.846f, 0.846f},
+			.mShininess = 50.f
 		};
 
 		Vec3f base_colour = { 0.7f, 0.7f, 0.7f };

@@ -21,6 +21,7 @@ layout( location = 0 ) uniform mat4 uProjCameraWorld;
 out vec3 v2fColor; // v2f = vertex to fragment
 out vec3 v2fNormal;
 out vec2 v2fTexCoord;
+out vec3 v2fPosition;
 
 void main()
 {
@@ -30,6 +31,7 @@ void main()
 	v2fNormal = normalize(iNormal);
 
 	v2fTexCoord = iTexCoord;
+	v2fPosition = iPosition;
 
 	gl_Position = uProjCameraWorld * vec4( iPosition.xyz, 1.0 );
 }

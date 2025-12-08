@@ -31,6 +31,7 @@ extern "C"
 #include "ModelObject.hpp"
 #include "ShapeObject.hpp"
 #include "LookAt.hpp"
+#include "Light.hpp"
 
 
 namespace
@@ -406,8 +407,26 @@ int main() try
 	);
 	glEnableVertexAttribArray(4);
 
-	Vec3f pointLightPos = { 2.6f, 4.f, 3.f };
-	Vec3f pointLightColour = { 1.f, 0.f, 0.f }; //red
+	//LIGHTS
+	#define N_LIGHTS 4
+	PointLight l1 = { { 2.6f, 4.f, 3.f, 0.f}, { 1.f, 0.f, 0.f, 0.f} };
+	PointLight l2 = { { 4.6f, 2.f, 1.f, 0.f}, { 0.f, 1.f, 0.f, 0.f} };
+	PointLight l3 = { { 3.6f, 1.f, 5.f, 0.f}, { 0.f, 0.f, 1.f, 0.f} };
+	std::vector<PointLight> lights(N_LIGHTS);
+	lights[0] = l1;
+	lights[1] = l2;
+	lights[2] = l3;
+
+	GLuint uboLights;
+	glGenBuffers(1, &uboLights);
+	glBindBuffer(GL_UNIFORM_BUFFER, uboLights);
+	glBufferData(GL_UNIFORM_BUFFER, sizeof(PointLight)* N_LIGHTS, nullptr, GL_DYNAMIC_DRAW);
+	glBindBuffer(GL_UNIFORM_BUFFER, 0);
+
+	GLuint blockIndex = glGetUniformBlockIndex(prog2.programId(), "LightBlock");
+	glUniformBlockBinding(prog2.programId(), blockIndex, 0);
+	glBindBufferBase(GL_UNIFORM_BUFFER, 0, uboLights);
+
 
 	// Reset State
 	glBindVertexArray( 0 );
@@ -521,8 +540,13 @@ int main() try
 		glUniform3f(locAmbient, 0.05f, 0.05f, 0.05f); // light ambient
 		glUniform3f(locCamPos, state.camControl.cameraPos[0], state.camControl.cameraPos[1], state.camControl.cameraPos[2]);
 		//specular light uniforms
-		glUniform3f(locLightPos, pointLightPos[0], pointLightPos[1], pointLightPos[2]);
-		glUniform3f(locSpecLightColour, pointLightColour[0], pointLightColour[1], pointLightColour[2]);
+		//glUniform3f(locLightPos, pointLightPos[0], pointLightPos[1], pointLightPos[2]);
+		//glUniform3f(locSpecLightColour, pointLightColour[0], pointLightColour[1], pointLightColour[2]);
+
+		glBindBuffer(GL_UNIFORM_BUFFER, uboLights);
+		glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(PointLight)* lights.size(), lights.data());
+		glBindBuffer(GL_UNIFORM_BUFFER, 0);
+
 
 		glBindVertexArray( vaoLandingPad );
 		glDrawArraysInstanced( GL_TRIANGLES, 0, landingPadVertsCount, landingPadInstances.GetInstanceCount());

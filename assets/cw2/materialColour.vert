@@ -10,7 +10,6 @@ uniform mat4 uProjCameraWorld[2];
 uniform vec3 uModelTransform[2];
 uniform mat3 uNormalTransform[2];
 
-
 out vec3 v2fColor; // v2f = vertex to fragment
 out vec3 v2fNormal;
 out vec3 v2fPosition;

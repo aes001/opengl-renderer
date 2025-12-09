@@ -17,6 +17,7 @@ uniform vec3 uCamPosition;
 struct PointLight {
     vec4 lPosition;
     vec4 lColour;
+	vec4 lIntensity;
 };
 
 layout(std140) uniform LightBlock {
@@ -38,7 +39,7 @@ vec3 CalcPointLight(PointLight light, vec3 normal, vec3 fragPos, vec3 view)
 
 	vec3 diffuse = 0.2* distAttenuation * vec3(light.lColour) * max(0.f, dot(L, normal));
 
-	return (specular + diffuse);
+	return (specular + diffuse) * light.lIntensity[0];
 
 }
 

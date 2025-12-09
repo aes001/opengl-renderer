@@ -7,6 +7,7 @@ struct PointLight {
 
     Vec4f lPosition;
     Vec4f lColour;
+    Vec4f lIntensity;
 };
 
 #endif

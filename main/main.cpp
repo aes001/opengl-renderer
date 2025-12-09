@@ -61,7 +61,7 @@ namespace
 	{
 		std::vector<PointLight>* lights;
 		std::vector<ShaderProgram*> progs;
-		const Vec3f diffuseLight = { 0.9f, 0.9f, 0.6f };
+		const Vec3f diffuseLight = { 0.729f, 0.808f, 0.92f }; //sky: 0.529f, 0.808f, 0.92f, warm: 0.9f, 0.9f, 0.6f
 		Vec3f currentGlobalLight;
 		float dt;
 		float speedMod;
@@ -187,7 +187,7 @@ int main() try
 
 	glEnable( GL_FRAMEBUFFER_SRGB );
 	glEnable( GL_CULL_FACE );
-	glClearColor( 0.2f, 0.2f, 0.2f, 0.0f );
+	glClearColor( 0.529f, 0.808f, 0.92f, 0.0f );
 	glEnable( GL_DEPTH_TEST );
 
 	OGL_CHECKPOINT_ALWAYS();
@@ -285,7 +285,7 @@ int main() try
 
 	ObjectInstanceGroup landingPadInstances( landingPadGPU );
 	landingPadInstances.CreateInstance( Transform( { .mPosition{-19.f,  -0.97f, 10.f} } ) );
-	landingPadInstances.CreateInstance( Transform( { .mPosition{-34.7f, -0.97f, 1.f } } ) );
+	landingPadInstances.CreateInstance( Transform( { .mPosition{-32.5f, -0.97f, 2.f } } ) ); //og -34.7f, -0.97f, 1.f 
 
 
 	GLuint vaoLandingPad = 0;
@@ -355,7 +355,7 @@ int main() try
 	// Create an instance of the model object
 	// Makes the model object have a position that we can later modify
 	ObjectInstanceGroup shipModelInstance(shipModelGPU);
-	shipModelInstance.CreateInstance({/* This is also a transform object like the ones we created for the cube and cylinder */});
+	shipModelInstance.CreateInstance({ -34.7f, -0.97f, 1.f });/* This is also a transform object like the ones we created for the cube and cylinder */
 
 	GLuint vaoSpaceShip = 0;
 	glGenVertexArrays( 1, &vaoSpaceShip );
@@ -414,10 +414,10 @@ int main() try
 	state.currentGlobalLight = state.diffuseLight;
 
 	#define N_LIGHTS 3
-	//lights: position, colour
-	PointLight l1 = { { 0.6f, 3.f, 0.5f, 0.f}, { 1.f, 0.f, 0.f, 1.f} };
-	PointLight l2 = { { 4.6f, 2.f, 1.f, 0.f}, { 0.f, 1.f, 0.f, 1.f} };
-	PointLight l3 = { { -18.f,  1.97f, 11.f, 0.f}, { 0.9f, 0.5f, 0.f, 1.f} };
+	//lights: position, colour, intensity
+	PointLight l1 = { { -33.5f, 0.3f, 2.f, 0.f}, { 0.8f, 0.77f, 0.72f, 1.f}, {0.15f, 0.f, 0.f} }; //under saucer light
+	PointLight l2 = { { -32.3f, 0.6f, 2.f, 0.f}, { 0.988f, 0.1f, 0.1f, 1.f}, {0.1f, 0.f, 0.f} }; //naecell light
+	PointLight l3 = { { -31.5f, -0.5f, 2.f, 0.f}, { 0.1f, 0.1f, 0.9f, 1.f}, {0.2f, 0.f, 0.f} }; //bottom light
 	std::vector<PointLight> lights(N_LIGHTS);
 	lights[0] = l1;
 	lights[1] = l2;
@@ -754,6 +754,13 @@ namespace
 			.mShininess = 50.f
 		};
 
+		ShapeMaterial radarDish
+		{
+			.mVertexColor = {0.722f, 0.451f, 0.20f},
+			.mSpecular = {0.946f, 0.846f, 0.846f},
+			.mShininess = 300.f
+		};
+
 		Vec3f base_colour = { 0.7f, 0.7f, 0.7f };
 		Vec3f red = { 0.8f, 0.1f, 0.1f };
 
@@ -779,7 +786,7 @@ namespace
 		ModelObject rightNacel = MakeCylinder(true, 32, rightNacelTransform, hullPlating);
 
 		Transform saucerTransform{
-			.mPosition{1.f, 1.5f, 1.f},
+			.mPosition{1.2f, 1.5f, 1.f},
 			.mRotation{0.f, 0.f, std::numbers::pi_v<float> / 2},
 			.mScale{0.1f, 1.f, 1.f}
 		};
@@ -800,14 +807,14 @@ namespace
 		ModelObject rightArm = MakeCube(rightArmTransform, hullPlating);
 
 		Transform neckTransform{
-			.mPosition{1.6f, 1.2f, 1.f},
+			.mPosition{1.8f, 1.2f, 1.f},
 			.mRotation{0.f, 0.f, std::numbers::pi_v<float> *0.2f},
 			.mScale{0.15f, 0.4f, 0.075f}
 		};
 		ModelObject neck = MakeCube(neckTransform, hullPlating);
 
 		Transform topSaucerTransform{
-			.mPosition{1.f, 1.6f, 1.f},
+			.mPosition{1.2f, 1.6f, 1.f},
 			.mRotation{0.f, 0.f, std::numbers::pi_v<float> / 2},
 			.mScale{0.2f, 0.75f, 0.75f}
 		};
@@ -815,14 +822,35 @@ namespace
 		ModelObject topSaucer = MakeCone(false, 32, topSaucerTransform, hullPlating);
 
 		Transform bottomSaucerTransform{
-			.mPosition{1.f, 1.5f, 1.f},
+			.mPosition{1.2f, 1.5f, 1.f},
 			.mRotation{0.f, 0.f, -std::numbers::pi_v<float> / 2},
 			.mScale{0.2f, 0.5f, 0.5f}
 		};
 		ModelObject bottomSaucer = MakeCone(false, 32, bottomSaucerTransform, hullPlating);
 
+		Transform rearDishTransform{
+			.mPosition{1.5f, 0.9f, 1.f},
+			.mRotation{0.f, 0.f, 0.f},
+			.mScale{0.1f, 0.19f, 0.19f}
+		};
+		ModelObject rearDish = MakeCone(false, 32, rearDishTransform, radarDish);
+
+		Transform frontDishTransform{
+			.mPosition{1.5f, 0.9f, 1.f},
+			.mRotation{0.f, std::numbers::pi_v<float>, 0.f},
+			.mScale{-0.1f, 0.19f, 0.19f}
+		};
+		ModelObject frontDish = MakeCone(false, 32, frontDishTransform, radarDish);
+
+		Transform radarAntennaTransform{
+			.mPosition{1.5f, 0.9f, 1.f},
+			.mRotation{0.f, 0.f, 0.f},
+			.mScale{0.075f, 0.01f, 0.01f}
+		};
+		ModelObject radarAntenna = MakeCylinder(true, 32, radarAntennaTransform, radarDish);
+
 		// Combine the two model objects
-		ModelObject combined = CombineShapeModelObjects(body, saucerSection, topSaucer, bottomSaucer, leftNacel, rightNacel, neck, leftArm, rightArm);
+		ModelObject combined = CombineShapeModelObjects(body, saucerSection, topSaucer, bottomSaucer, leftNacel, rightNacel, neck, leftArm, rightArm, rearDish, frontDish, radarAntenna);
 
 		return combined;
 	}

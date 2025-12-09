@@ -346,6 +346,7 @@ int main() try
 
 	// Combine the two model objects
 	ModelObject spaceShipModel = create_ship();
+	spaceShipModel.OriginToGeometry();
 	const GLsizei spaceShipVertsCount = spaceShipModel.Vertices().size();
 
 	// Creaete the vbos for the model object
@@ -355,7 +356,7 @@ int main() try
 	// Makes the model object have a position that we can later modify
 
 	Transform spaceShipInitialTransform{
-		.mPosition{ -34.7f, -0.97f, 1.f },
+		.mPosition{ -32.5f, 0.3f, 2.f },
 		.mRotation{ 0.f, 0.f, 0.f },
 		.mScale{ 1.f, 1.f, 1.f }
 	};
@@ -419,9 +420,9 @@ int main() try
 	state.currentGlobalLight = state.diffuseLight;
 
 	#define N_LIGHTS 3
-	Vec4f l1InitialTransform = { -33.5f, 0.3f, 2.f, 0.f};
-	Vec4f l2InitialTransform = { -32.3f, 0.6f, 2.f, 0.f};
-	Vec4f l3InitialTransform = { -31.5f, -0.5f, 2.f, 0.f};
+	Vec4f l1InitialTransform = { -33.75f, 0.3f, 2.f, 0.f};
+	Vec4f l2InitialTransform = { -32.55f, 0.6f, 2.f, 0.f};
+	Vec4f l3InitialTransform = { -31.75f, -0.5f, 2.f, 0.f};
 	std::vector<Vec4f> lightOriginalPositions = {l1InitialTransform, l2InitialTransform, l3InitialTransform};
 	//lights: position, colour, intensity
 	PointLight l1 = { l1InitialTransform, { 0.8f, 0.77f, 0.72f, 1.f}, {0.15f, 0.f, 0.f} }; //under saucer light
@@ -730,17 +731,17 @@ int main() try
 		glUniform3f(locCamPos, state.camControl.cameraPos[0], state.camControl.cameraPos[1], state.camControl.cameraPos[2]);
 		//specular light uniforms
 
-		float ssXOffset = spaceShipAnimatedFloats[0].Update(state.dt) - spaceShipInitialTransform.mPosition.x;
-		float ssYOffset = spaceShipAnimatedFloats[1].Update(state.dt) - spaceShipInitialTransform.mPosition.y;
-		float ssZOffset = spaceShipAnimatedFloats[2].Update(state.dt) - spaceShipInitialTransform.mPosition.z;
+		Vec3f spaceShipAnimatedPosition{
+			spaceShipAnimatedFloats[0].Update(state.dt),
+			spaceShipAnimatedFloats[1].Update(state.dt),
+			spaceShipAnimatedFloats[2].Update(state.dt)
+		};
+
+		Vec4f spaceShipOffset = Vec3ToVec4(spaceShipAnimatedPosition - spaceShipInitialTransform.mPosition);
 
 		for(size_t i = 0; i < lights.size(); i++)
 		{
-			Vec4f offsets{ ssXOffset,
-						   ssYOffset,
-						   ssZOffset,
-						   0.f};
-			lights[i].lPosition = lightOriginalPositions[i] + offsets;
+			lights[i].lPosition = lightOriginalPositions[i] + spaceShipOffset;
 		}
 
 		glBindBuffer(GL_UNIFORM_BUFFER, uboLights);
@@ -756,9 +757,7 @@ int main() try
 		// We need to use the GetProjCameraWorldArray() from the instance group so we can later animate the spaceship
 		Transform& spaceShipTrans = spaceShipInstances.GetTransform(0);
 
-		spaceShipTrans.mPosition.x = spaceShipAnimatedFloats[0].Update(state.dt);
-		spaceShipTrans.mPosition.y = spaceShipAnimatedFloats[1].Update(state.dt);
-		spaceShipTrans.mPosition.z = spaceShipAnimatedFloats[2].Update(state.dt);
+		spaceShipTrans.mPosition = spaceShipAnimatedPosition; // Bind the spaceship position to the animated floats
 
 		spaceShipTrans.mRotation.x = spaceShipAnimatedFloats[3].Update(state.dt);
 		spaceShipTrans.mRotation.y = spaceShipAnimatedFloats[4].Update(state.dt);

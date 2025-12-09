@@ -632,25 +632,6 @@ int main() try
 	//UI initialisation
 	Mat44f orthProj = MakeOrthoProj(0, iwidth, 0, iheight, 0, 600);
 
-/*	std::vector<Vec2f> testVerticies =
-	{
-		{ 0.f,  0.8f},  // bottom-left
-		{-0.7f, -0.8f},  // bottom-right
-		{+0.7f, -0.8f}, // top-right
-		{-0.7f,  0.8f},
-		{-0.8f, -0.8f},
-		{-0.1f,  0.8f}
-	};
-	std::vector<Vec3f> testColours =
-	{
-		{0.722f, 0.251f, 0.2f},  // bottom-left
-		{0.722f, 0.251f, 0.2f},  // bottom-right
-		{0.722f, 0.251f, 0.2f}, // top-right
-		{0.722f, 0.451f, 0.9f},
-		{0.722f, 0.451f, 0.9f},
-		{0.722f, 0.451f, 0.9f}
-	};*/
-
 	UIElementProperties test_prop
 	{
 		.uiColour = {0.722f, 0.151f, 0.1f},
@@ -660,23 +641,13 @@ int main() try
 	};
 
 	UIElement test_element = UIElement(test_prop);
-
-	//VBO
-	GLuint vboUIVertex = 0;
-	glGenBuffers(1, &vboUIVertex);
-	glBindBuffer(GL_ARRAY_BUFFER, vboUIVertex);
-	glBufferData(GL_ARRAY_BUFFER, test_element.Vertices().size() * sizeof(Vec2f), test_element.Vertices().data(), GL_STATIC_DRAW);
-
-	GLuint vboUIColour = 0;
-	glGenBuffers(1, &vboUIColour);
-	glBindBuffer(GL_ARRAY_BUFFER, vboUIColour);
-	glBufferData(GL_ARRAY_BUFFER, test_element.VertexColours().size() * sizeof(Vec3f), test_element.VertexColours().data(), GL_STATIC_DRAW);
+	UIElementGPU test_element_GPU = UIElementGPU(test_element);
 
 	//VAO
 	GLuint vaoUI = 0;
 	glGenVertexArrays(1, &vaoUI);
 	glBindVertexArray(vaoUI);
-	glBindBuffer(GL_ARRAY_BUFFER, vboUIVertex);
+	glBindBuffer(GL_ARRAY_BUFFER, test_element_GPU.BufferId(uiVboPositions_index));
 	glVertexAttribPointer(
 		0,
 		2, GL_FLOAT, GL_FALSE,
@@ -685,7 +656,7 @@ int main() try
 	);
 	glEnableVertexAttribArray(0);
 
-	glBindBuffer(GL_ARRAY_BUFFER, vboUIColour);
+	glBindBuffer(GL_ARRAY_BUFFER, test_element_GPU.BufferId(uiVboVertexColour_index));
 	glVertexAttribPointer(
 		1,
 		3, GL_FLOAT, GL_FALSE,

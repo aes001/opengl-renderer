@@ -53,3 +53,84 @@ std::vector<Vec3f>& UIElement::VertexColours()
 {
 	return uiVertexColours;
 };
+
+
+//GPU version of the class for loading an element into VBO's
+UIElementGPU::UIElementGPU(const UIElement& UI) 
+	: uiVboPositions(0)
+	, uiVboVertexColour(0)
+{
+	CreatePositionsVBO(UI);
+	CreateVertexColourVBO(UI);
+
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+}
+
+//destructor
+UIElementGPU::~UIElementGPU()
+{
+	ReleaseBuffers();
+}
+
+
+UIElementGPU::UIElementGPU(UIElementGPU&& other) noexcept
+	: uiVboPositions(std::exchange(other.uiVboPositions, 0))
+	, uiVboVertexColour(std::exchange(other.uiVboVertexColour, 0))
+{
+}
+
+
+UIElementGPU& UIElementGPU::operator=(UIElementGPU&& other) noexcept
+{
+	if (this != &other)
+	{
+		ReleaseBuffers();
+
+		uiVboPositions = std::exchange(other.uiVboPositions, 0);
+		uiVboVertexColour = std::exchange(other.uiVboVertexColour, 0);
+	}
+
+	return *this;
+}
+
+
+
+GLuint UIElementGPU::BufferId(uiBufferType bufferType) const
+{
+	GLuint ret = 0;
+
+	switch (bufferType)
+	{
+	case uiVboPositions_index:
+		ret = uiVboPositions;
+		break;
+	case uiVboVertexColour_index:
+		ret = uiVboVertexColour;
+		break;
+	};
+
+	return ret;
+}
+
+void UIElementGPU::CreatePositionsVBO(const UIElement& UI) 
+{
+	glGenBuffers(1, &uiVboPositions);
+	glBindBuffer(GL_ARRAY_BUFFER, uiVboPositions);
+	glBufferData(GL_ARRAY_BUFFER, UI.Vertices().size() * sizeof(Vec2f), UI.Vertices().data(), GL_STATIC_DRAW);
+}
+
+void UIElementGPU::CreateVertexColourVBO(const UIElement& UI)
+{
+	glGenBuffers(1, &uiVboVertexColour);
+	glBindBuffer(GL_ARRAY_BUFFER, uiVboVertexColour);
+	glBufferData(GL_ARRAY_BUFFER, UI.VertexColours().size() * sizeof(Vec3f), UI.VertexColours().data(), GL_STATIC_DRAW);
+}
+
+void UIElementGPU::ReleaseBuffers() 
+{
+	glDeleteBuffers(1, &uiVboPositions);
+	glDeleteBuffers(1, &uiVboVertexColour);
+
+	uiVboPositions = 0;
+	uiVboVertexColour = 0;
+}

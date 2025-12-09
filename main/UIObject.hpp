@@ -1,6 +1,8 @@
 #ifndef UI_OBJECT_HPP
 #define UI_OBJECT_HPP
 
+// Includes
+#include "glad/glad.h"
 #include "../vmlib/vec2.hpp"
 #include "../vmlib/vec3.hpp"
 
@@ -32,6 +34,41 @@ private:
 private:
 	std::vector<Vec2f> uiVertices;
 	std::vector<Vec3f> uiVertexColours;
+};
+
+
+
+enum uiBufferType : size_t
+{
+	uiVboPositions_index = 0,
+	uiVboVertexColour_index,
+};
+
+class UIElementGPU 
+{
+public:
+	UIElementGPU( const UIElement& UI );
+	~UIElementGPU();
+
+	UIElementGPU( const UIElementGPU& ) = delete;
+	UIElementGPU& operator=( const UIElementGPU& ) noexcept;
+
+	UIElementGPU(UIElementGPU&& other) noexcept;
+	UIElementGPU& operator=(UIElementGPU&& other) noexcept;
+
+
+	GLuint BufferId(uiBufferType bufferType) const;
+
+private:
+	void CreatePositionsVBO(const UIElement& UI);
+	void CreateVertexColourVBO(const UIElement& UI);
+
+	void ReleaseBuffers();
+
+private:
+	GLuint uiVboPositions;
+	GLuint uiVboVertexColour;
+
 };
 
 #endif

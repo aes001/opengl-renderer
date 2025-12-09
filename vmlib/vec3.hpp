@@ -5,6 +5,7 @@
 #include <cmath>
 #include <cassert>
 #include <cstdlib>
+#include <array>
 
 struct Vec3f
 {
@@ -22,6 +23,8 @@ struct Vec3f
 		assert( aI < 3 );
 		return aI[&x]; // This is a bit sketchy.
 	}
+
+	std::array<float, 3> GetArray() { return std::array<float, 3>({ x, y, z }); };
 };
 
 
@@ -116,6 +119,13 @@ Vec3f& operator/=( Vec3f& aLeft, float aRight ) noexcept
 	return aLeft;
 }
 
+constexpr
+bool operator==(const Vec3f& aLeft, const Vec3f &aRight) noexcept
+{
+	return aLeft.x == aRight.x && 
+		   aLeft.y == aRight.y && 
+		   aLeft.z == aRight.z;
+}
 
 // A few common functions:
 

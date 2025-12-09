@@ -48,7 +48,7 @@ class ModelObject
 {
 public:
 	explicit ModelObject( const char* objPath, uint32_t loadFlags = kLoadEverything );
-	explicit ModelObject( std::vector<Vec3f> positions, std::vector<Vec3f> normals, std::vector<Vec3f> colours );
+	explicit ModelObject(std::vector<Vec3f> positions, std::vector<Vec3f> normals, std::vector<Vec3f> colours, std::vector<Vec3f> specular, std::vector<float> shininess);
 
 	const std::vector<Vec3f>& Vertices() const;
 	std::vector<Vec3f>& Vertices();
@@ -243,6 +243,8 @@ public:
 	size_t GetInstanceCount();
 
 	std::vector<Mat44f> GetProjCameraWorldArray(const Mat44f& projection, const Mat44f& world2camera) const;
+	std::vector<std::array<float, 3>> GetTranslationArray();
+	std::vector<Mat33f> GetNormalUpdateArray() const;
 
 	const std::vector<Transform>& GetTransforms() const;
 

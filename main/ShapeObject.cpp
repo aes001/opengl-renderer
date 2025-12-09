@@ -21,7 +21,7 @@ Vec3f CalculateNormal(Vec3f vertexA, Vec3f vertexB, Vec3f vertexC)
 }
 
 
-ModelObject MakeCylinder( bool aCapped, std::size_t aSubdivs, Vec3f aColor, Transform aPreTransform )
+ModelObject MakeCylinder( bool aCapped, std::size_t aSubdivs, Transform aPreTransform, ShapeMaterial aMaterial)
 {
 	std::vector<Vec3f> pos;
 	std::vector<Vec3f> normals;
@@ -95,13 +95,16 @@ ModelObject MakeCylinder( bool aCapped, std::size_t aSubdivs, Vec3f aColor, Tran
 		normals.emplace_back(vertNormal);
 	}
 
-	std::vector col{pos.size(), aColor};
+	// Material Stuff
+	std::vector colour{ pos.size(), aMaterial.mVertexColor };
+	std::vector specular{ pos.size(), aMaterial.mSpecular };
+	std::vector shininess( pos.size(), aMaterial.mShininess );
 
-	return ModelObject{ std::move(pos), std::move(normals), std::move(col) };
+	return ModelObject{ std::move(pos), std::move(normals), std::move(colour), std::move(specular), std::move(shininess) };
 }
 
 
-ModelObject MakeCone( bool aCapped, std::size_t aSubdivs, Vec3f aColor, Transform aPreTransform )
+ModelObject MakeCone( bool aCapped, std::size_t aSubdivs, Transform aPreTransform, ShapeMaterial aMaterial)
 {
 	std::vector<Vec3f> pos;
 	std::vector<Vec3f> normals;
@@ -167,13 +170,16 @@ ModelObject MakeCone( bool aCapped, std::size_t aSubdivs, Vec3f aColor, Transfor
 		normals.emplace_back(vertNormal);
 	}
 
-	std::vector col{pos.size(), aColor};
+	// Material Stuff
+	std::vector colour{ pos.size(), aMaterial.mVertexColor };
+	std::vector specular{ pos.size(), aMaterial.mSpecular };
+	std::vector shininess( pos.size(), aMaterial.mShininess );
 
-	return ModelObject{ std::move(pos), std::move(normals), std::move(col) };
+	return ModelObject{ std::move(pos), std::move(normals), std::move(colour), std::move(specular), std::move(shininess) };
 }
 
 
-ModelObject MakeCube( Vec3f aColor, Transform aPreTransform )
+ModelObject MakeCube(Transform aPreTransform, ShapeMaterial aMaterial)
 {
 	std::vector<Vec3f> pos;
 	std::vector<Vec3f> normals;
@@ -245,8 +251,11 @@ ModelObject MakeCube( Vec3f aColor, Transform aPreTransform )
 		normals.emplace_back(normal);
 	}
 
-	std::vector col{pos.size(), aColor};
+	// Material Stuff
+	std::vector colour{ pos.size(), aMaterial.mVertexColor };
+	std::vector specular{ pos.size(), aMaterial.mSpecular };
+	std::vector shininess( pos.size(), aMaterial.mShininess );
 
-	return ModelObject{ std::move(pos), std::move(normals), std::move(col) };
+	return ModelObject{ std::move(pos), std::move(normals), std::move(colour), std::move(specular), std::move(shininess) };
 }
 

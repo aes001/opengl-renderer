@@ -8,9 +8,6 @@
 #include <algorithm>
 
 
-
-
-
 constexpr
 float Lerp(float a, float b, float t) noexcept
 {
@@ -24,26 +21,42 @@ float Lerp(float a, float b, float t) noexcept
 namespace ShapingFunctions
 {
 	constexpr
+	float None( float t )
+	{
+		(void) t;
+		return 0.f;
+	}
+
+
+	constexpr
+	float Instant( float t )
+	{
+		(void) t;
+		return 1.f;
+	}
+
+
+	constexpr
 	float Linear( float t )
 	{
 		return t;
 	}
 
 
-	template <int N>
+	template <int DEGREE>
 	constexpr float Polynomial( float t )
 	{
-		if constexpr (N == 1)
+		if constexpr (DEGREE == 1)
 			return t;
 		else
-			return t * Polynomial<N-1>(t);
+			return t * Polynomial<DEGREE-1>(t);
 	}
 
 
-	template <int N>
+	template <int DEGREE>
 	constexpr float PolynomialEaseOut( float t )
 	{
-		return 1 - Polynomial<N>(1 - t);
+		return 1 - Polynomial<DEGREE>(1 - t);
 	}
 
 
@@ -78,6 +91,7 @@ public:
 	void Play();
 	void Pause();
 	void Stop();
+	void Toggle();
 
 	bool IsPlaying();
 

@@ -44,6 +44,12 @@ void KeyFramedFloat::Stop()
 }
 
 
+void KeyFramedFloat::Toggle()
+{
+	mIsPlaying = !mIsPlaying;
+}
+
+
 bool KeyFramedFloat::IsPlaying()
 {
 	return mIsPlaying;
@@ -69,9 +75,9 @@ float KeyFramedFloat::Update( float aDeltaTime )
 	const FloatKeyFrame& currentKF = mKeyFrames[ mCurrentKFIndex ];
 	const FloatKeyFrame& nextKF    = mKeyFrames[ mCurrentKFIndex + 1 ];
 
-	float interpolationProgress = currentKF.mDuration != 0.f ? std::min(mTimeOnCurrentKF / currentKF.mDuration, 1.f) : 1.f;
+	float interpolationProgress = nextKF.mDuration != 0.f ? std::min(mTimeOnCurrentKF / nextKF.mDuration, 1.f) : 1.f;
 
-	ret = Lerp(currentKF.mValue, nextKF.mValue, currentKF.mShapingFunc(interpolationProgress));
+	ret = Lerp(currentKF.mValue, nextKF.mValue, nextKF.mShapingFunc(interpolationProgress));
 
 	if( interpolationProgress == 1.f )
 	{
@@ -92,13 +98,13 @@ float KeyFramedFloat::Update( float aDeltaTime )
 
 void KeyFramedFloat::InsertKeyframe( FloatKeyFrame aKf )
 {
-	mKeyFrames.emplace_back( std::move(aKf) );
+ 	mKeyFrames.emplace_back( std::move(aKf) );
 }
 
 
 void KeyFramedFloat::InsertOnFinishCallback( std::function<void()> cb )
 {
-	mOnFinishCallbacks.push_back(cb);
+	mOnFinishCallbacks.push_back( cb );
 }
 
 

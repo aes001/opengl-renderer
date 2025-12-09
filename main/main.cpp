@@ -34,6 +34,7 @@ extern "C"
 #include "AnimationTools.hpp"
 #include "GeometricHelpers.hpp"
 #include "Light.hpp"
+#include "UIObject.hpp"
 
 
 namespace
@@ -228,6 +229,10 @@ int main() try
 	state.progs.push_back(&progUI);
 	auto last = Clock::now();
 
+#pragma region ModelLoad
+
+
+
 
 	uint32_t terrainLoadFlags = kLoadTextureCoords | kLoadVertexColour;
 	ModelObject terrain( "assets/cw2/parlahti.obj", terrainLoadFlags );
@@ -421,6 +426,12 @@ int main() try
 	);
 	glEnableVertexAttribArray(4);
 
+#pragma endregion
+
+#pragma region LightsInit
+
+
+
 	//LIGHTS
 	state.currentGlobalLight = state.diffuseLight;
 
@@ -459,7 +470,7 @@ int main() try
 	glBindVertexArray( 0 );
 	glBindBuffer( GL_ARRAY_BUFFER, 0 );
 
-
+#pragma endregion
 
 	// Animating
 	// Space ship animation
@@ -621,7 +632,7 @@ int main() try
 	//UI initialisation
 	Mat44f orthProj = MakeOrthoProj(0, iwidth, 0, iheight, 0, 600);
 
-	std::vector<Vec2f> testVerticies =
+/*	std::vector<Vec2f> testVerticies =
 	{
 		{ 0.f,  0.8f},  // bottom-left
 		{-0.7f, -0.8f},  // bottom-right
@@ -632,24 +643,34 @@ int main() try
 	};
 	std::vector<Vec3f> testColours =
 	{
-		{0.722f, 0.451f, 0.2f},  // bottom-left
-		{0.722f, 0.451f, 0.2f},  // bottom-right
-		{0.722f, 0.451f, 0.2f}, // top-right
-		{0.722f, 0.451f, 0.2f},
-		{0.722f, 0.451f, 0.2f},
-		{0.722f, 0.451f, 0.2f}
+		{0.722f, 0.251f, 0.2f},  // bottom-left
+		{0.722f, 0.251f, 0.2f},  // bottom-right
+		{0.722f, 0.251f, 0.2f}, // top-right
+		{0.722f, 0.451f, 0.9f},
+		{0.722f, 0.451f, 0.9f},
+		{0.722f, 0.451f, 0.9f}
+	};*/
+
+	UIElementProperties test_prop
+	{
+		.uiColour = {0.722f, 0.151f, 0.1f},
+		.uiPosition = {0.7f, -0.9},
+		.uiWidth = 0.2f,
+		.uiHeight = 0.2f
 	};
+
+	UIElement test_element = UIElement(test_prop);
 
 	//VBO
 	GLuint vboUIVertex = 0;
 	glGenBuffers(1, &vboUIVertex);
 	glBindBuffer(GL_ARRAY_BUFFER, vboUIVertex);
-	glBufferData(GL_ARRAY_BUFFER, testVerticies.size() * sizeof(Vec2f), testVerticies.data(), GL_STATIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, test_element.Vertices().size() * sizeof(Vec2f), test_element.Vertices().data(), GL_STATIC_DRAW);
 
 	GLuint vboUIColour = 0;
 	glGenBuffers(1, &vboUIColour);
 	glBindBuffer(GL_ARRAY_BUFFER, vboUIColour);
-	glBufferData(GL_ARRAY_BUFFER, testColours.size() * sizeof(Vec3f), testColours.data(), GL_STATIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, test_element.VertexColours().size() * sizeof(Vec3f), test_element.VertexColours().data(), GL_STATIC_DRAW);
 
 	//VAO
 	GLuint vaoUI = 0;
@@ -673,7 +694,7 @@ int main() try
 	);
 	glEnableVertexAttribArray(1);
 
-	const GLsizei uiVertsCount = static_cast<GLsizei>(testVerticies.size());
+	const GLsizei uiVertsCount = static_cast<GLsizei>(test_element.Vertices().size());
 
 
 	OGL_CHECKPOINT_ALWAYS();
@@ -735,6 +756,10 @@ int main() try
 
 		// Draw scene
 		OGL_CHECKPOINT_DEBUG();
+
+#pragma region RenderModels
+
+
 
 		// Rendering the terrain
 		glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
@@ -845,7 +870,7 @@ int main() try
 		// Cleanup
 		glBindVertexArray( 0 );
 		glUseProgram( 0 );
-
+#pragma endregion
 
 		//Render UI
 		glDisable(GL_DEPTH_TEST);

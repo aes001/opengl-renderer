@@ -82,6 +82,15 @@ struct FloatKeyFrame
 
 
 
+// ===========================================================================
+//		KeyFramedFloat
+// ---------------------------------------------------------------------------
+//		Description
+// ---------------------------------------------------------------------------
+//	Represents an animated float. Call .Update(dt) will return the value of
+//	the float after the set amount of time has elapsed.
+//	Controls are a bit like media player controls, play, pause, stop...
+// ---------------------------------------------------------------------------
 class KeyFramedFloat
 {
 public:
@@ -119,6 +128,15 @@ private:
 
 
 
+
+// ===========================================================================
+//		FloatKeyFrameGenerator
+// ---------------------------------------------------------------------------
+//		Description
+// ---------------------------------------------------------------------------
+//	Helper object to generate key frames incrementally by keeping track of
+//	the incremented value
+// ---------------------------------------------------------------------------
 class FloatKeyFrameGenerator
 {
 public:

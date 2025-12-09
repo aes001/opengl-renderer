@@ -218,8 +218,14 @@ int main() try
 		{GL_FRAGMENT_SHADER, "assets/cw2/materialColour.frag"}
 	} );
 
+	ShaderProgram progUI({
+		{ GL_VERTEX_SHADER, "assets/cw2/uiShader.vert" },
+		{ GL_FRAGMENT_SHADER, "assets/cw2/uiShader.frag" }
+	});
+
 	state.progs.push_back(&prog);
 	state.progs.push_back(&prog2);
+	state.progs.push_back(&progUI);
 	auto last = Clock::now();
 
 
@@ -612,6 +618,62 @@ int main() try
 
 	state.animatedFloatsPtr = &spaceShipAnimatedFloats;
 
+	//UI initialisation
+	Mat44f orthProj = MakeOrthoProj(0, iwidth, 0, iheight, 0, 600);
+
+	std::vector<Vec2f> testVerticies =
+	{
+		{ 0.f,  0.8f},  // bottom-left
+		{-0.7f, -0.8f},  // bottom-right
+		{+0.7f, -0.8f}, // top-right
+		{-0.7f,  0.8f},
+		{-0.8f, -0.8f},
+		{-0.1f,  0.8f}
+	};
+	std::vector<Vec3f> testColours =
+	{
+		{0.722f, 0.451f, 0.2f},  // bottom-left
+		{0.722f, 0.451f, 0.2f},  // bottom-right
+		{0.722f, 0.451f, 0.2f}, // top-right
+		{0.722f, 0.451f, 0.2f},
+		{0.722f, 0.451f, 0.2f},
+		{0.722f, 0.451f, 0.2f}
+	};
+
+	//VBO
+	GLuint vboUIVertex = 0;
+	glGenBuffers(1, &vboUIVertex);
+	glBindBuffer(GL_ARRAY_BUFFER, vboUIVertex);
+	glBufferData(GL_ARRAY_BUFFER, testVerticies.size() * sizeof(Vec2f), testVerticies.data(), GL_STATIC_DRAW);
+
+	GLuint vboUIColour = 0;
+	glGenBuffers(1, &vboUIColour);
+	glBindBuffer(GL_ARRAY_BUFFER, vboUIColour);
+	glBufferData(GL_ARRAY_BUFFER, testColours.size() * sizeof(Vec3f), testColours.data(), GL_STATIC_DRAW);
+
+	//VAO
+	GLuint vaoUI = 0;
+	glGenVertexArrays(1, &vaoUI);
+	glBindVertexArray(vaoUI);
+	glBindBuffer(GL_ARRAY_BUFFER, vboUIVertex);
+	glVertexAttribPointer(
+		0,
+		2, GL_FLOAT, GL_FALSE,
+		0,
+		0
+	);
+	glEnableVertexAttribArray(0);
+
+	glBindBuffer(GL_ARRAY_BUFFER, vboUIColour);
+	glVertexAttribPointer(
+		1,
+		3, GL_FLOAT, GL_FALSE,
+		0,
+		0
+	);
+	glEnableVertexAttribArray(1);
+
+	const GLsizei uiVertsCount = static_cast<GLsizei>(testVerticies.size());
 
 
 	OGL_CHECKPOINT_ALWAYS();
@@ -730,6 +792,7 @@ int main() try
 		glUniform3f(locCamPos, state.camControl.cameraPos[0], state.camControl.cameraPos[1], state.camControl.cameraPos[2]);
 		//specular light uniforms
 
+		//update light positions with ship animation
 		float ssXOffset = spaceShipAnimatedFloats[0].Update(state.dt) - spaceShipInitialTransform.mPosition.x;
 		float ssYOffset = spaceShipAnimatedFloats[1].Update(state.dt) - spaceShipInitialTransform.mPosition.y;
 		float ssZOffset = spaceShipAnimatedFloats[2].Update(state.dt) - spaceShipInitialTransform.mPosition.z;
@@ -743,6 +806,7 @@ int main() try
 			lights[i].lPosition = lightOriginalPositions[i] + offsets;
 		}
 
+		//bind lights to uniform buffer
 		glBindBuffer(GL_UNIFORM_BUFFER, uboLights);
 		glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(PointLight)* lights.size(), lights.data());
 		glBindBuffer(GL_UNIFORM_BUFFER, 0);
@@ -778,10 +842,28 @@ int main() try
 		glBindVertexArray( vaoSpaceShip );
 		glDrawArraysInstanced( GL_TRIANGLES, 0, spaceShipVertsCount, spaceShipInstances.GetInstanceCount());
 
-
 		// Cleanup
 		glBindVertexArray( 0 );
 		glUseProgram( 0 );
+
+
+		//Render UI
+		glDisable(GL_DEPTH_TEST);
+
+		glUseProgram(progUI.programId());
+		//give projection matrix to uniform
+		GLint locOrtho = glGetUniformLocation(progUI.programId(), "projection");
+		glUniformMatrix4fv(locOrtho, 1, GL_FALSE, &orthProj[0, 0]);
+
+		glBindVertexArray(vaoUI);
+		glDrawArrays(GL_TRIANGLES, 0, uiVertsCount);
+		glEnable (GL_DEPTH_TEST);
+
+
+		// Cleanup
+		glBindVertexArray(0);
+		glUseProgram(0);
+
 
 		OGL_CHECKPOINT_DEBUG();
 

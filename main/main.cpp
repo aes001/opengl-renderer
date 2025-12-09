@@ -362,165 +362,6 @@ int main() try
 	ObjectInstanceGroup spaceShipInstances( spaceShipModelGPU );
 	spaceShipInstances.CreateInstance( spaceShipInitialTransform );
 
-	// Space ship animation
-	std::vector<KeyFramedFloat> spaceShipAnimatedFloats =
-		[&] ()
-		{
-			std::vector<KeyFramedFloat> ret;
-			// Need to do this otherwise the references are invalid because
-			// vector gets resized after emplace_back();
-			ret.reserve(6);
-
-			KeyFramedFloat& spaceShipXKF = ret.emplace_back();
-			KeyFramedFloat& spaceShipYKF = ret.emplace_back();
-			KeyFramedFloat& spaceShipZKF = ret.emplace_back();
-
-			KeyFramedFloat& spaceShipXRotKF = ret.emplace_back();
-			KeyFramedFloat& spaceShipYRotKF = ret.emplace_back();
-			KeyFramedFloat& spaceShipZRotKF = ret.emplace_back();
-
-
-			// Initial Transforms
-			spaceShipXKF.InsertKeyframe({
-				spaceShipInitialTransform.mPosition.x,
-				0.f,
-				ShapingFunctions::None // First shaping function is unused
-			});
-
-			spaceShipYKF.InsertKeyframe({
-				spaceShipInitialTransform.mPosition.y,
-				0.f,
-				ShapingFunctions::None // First shaping function is unused
-			});
-
-			spaceShipZKF.InsertKeyframe({
-				spaceShipInitialTransform.mPosition.z,
-				0.f,
-				ShapingFunctions::None // First shaping function is unused
-			});
-
-			spaceShipYRotKF.InsertKeyframe({
-				spaceShipInitialTransform.mRotation.y,
-				0.f,
-				ShapingFunctions::None
-			});
-
-
-			// Go Up
-			spaceShipXKF.InsertKeyframe({
-				spaceShipInitialTransform.mPosition.x,
-				7.f,
-				ShapingFunctions::Smoothstep
-				});
-
-			float newSpaceShipY = spaceShipInitialTransform.mPosition.y + 30.f;
-			spaceShipYKF.InsertKeyframe({
-				newSpaceShipY,
-				7.f,
-				ShapingFunctions::Smoothstep
-			});
-
-			spaceShipZKF.InsertKeyframe({
-				spaceShipInitialTransform.mPosition.z,
-				7.f,
-				ShapingFunctions::Smoothstep
-			});
-
-			float newSpaceShipRotY = spaceShipInitialTransform.mRotation.y + 100.0_deg;
-			spaceShipYRotKF.InsertKeyframe({
-				newSpaceShipRotY,
-				7.f,
-				ShapingFunctions::PolynomialEaseOut<4>
-			});
-
-
-			// Wait
-			spaceShipXKF.InsertKeyframe({
-				spaceShipInitialTransform.mPosition.x,
-				0.1f,
-				ShapingFunctions::None
-			});
-
-			spaceShipYKF.InsertKeyframe({
-				newSpaceShipY,
-				0.1f,
-				ShapingFunctions::None
-			});
-
-			spaceShipZKF.InsertKeyframe({
-				spaceShipInitialTransform.mPosition.z,
-				0.1f,
-				ShapingFunctions::None
-			});
-
-
-			// Warp Calculations
-			// Transform the whole ship
-			Vec3f spaceShipPositionAfterLiftOff{
-				spaceShipInitialTransform.mPosition.x,
-				newSpaceShipY,
-				spaceShipInitialTransform.mPosition.z
-			};
-
-			Vec3f spaceShipForward{
-				cosf(spaceShipInitialTransform.mRotation.x) * sinf(newSpaceShipRotY),
-				sinf(spaceShipInitialTransform.mRotation.x),
-				cosf(spaceShipInitialTransform.mRotation.x) * cosf(newSpaceShipRotY)
-			};
-
-			spaceShipForward = Vec4ToVec3(make_rotation_y(-90.0_deg) * Vec3ToVec4(normalize(spaceShipForward)));
-
-			Vec3f newSpaceShipPosition  = (spaceShipForward * 1000.f) + spaceShipPositionAfterLiftOff;
-
-
-			// Warp
-			spaceShipXKF.InsertKeyframe({
-				newSpaceShipPosition.x,
-				3.f,
-				ShapingFunctions::Polynomial<6>
-			});
-
-			spaceShipYKF.InsertKeyframe({
-				newSpaceShipPosition.y,
-				3.f,
-				ShapingFunctions::Polynomial<6>
-			});
-
-			spaceShipZKF.InsertKeyframe({
-				newSpaceShipPosition.z,
-				3.f,
-				ShapingFunctions::Polynomial<6>
-			});
-
-
-			// Disappear
-			spaceShipXKF.InsertKeyframe({
-				newSpaceShipPosition.x + 9999.f,
-				0.f,
-				ShapingFunctions::Instant
-			});
-
-			spaceShipYKF.InsertKeyframe({
-				newSpaceShipPosition.y + 9999.f,
-				0.f,
-				ShapingFunctions::Instant
-			});
-
-			spaceShipZKF.InsertKeyframe({
-				newSpaceShipPosition.z + 9999.f,
-				0.f,
-				ShapingFunctions::Instant
-			});
-
-
-			return ret;
-		} ();
-
-	state.animatedFloatsPtr = &spaceShipAnimatedFloats;
-
-
-
-
 	GLuint vaoSpaceShip = 0;
 	glGenVertexArrays( 1, &vaoSpaceShip );
 	glBindVertexArray( vaoSpaceShip );
@@ -578,10 +419,14 @@ int main() try
 	state.currentGlobalLight = state.diffuseLight;
 
 	#define N_LIGHTS 3
+	Vec4f l1InitialTransform = { -33.5f, 0.3f, 2.f, 0.f};
+	Vec4f l2InitialTransform = { -32.3f, 0.6f, 2.f, 0.f};
+	Vec4f l3InitialTransform = { -31.5f, -0.5f, 2.f, 0.f};
+	std::vector<Vec4f> lightOriginalPositions = {l1InitialTransform, l2InitialTransform, l3InitialTransform};
 	//lights: position, colour, intensity
-	PointLight l1 = { { -33.5f, 0.3f, 2.f, 0.f}, { 0.8f, 0.77f, 0.72f, 1.f}, {0.15f, 0.f, 0.f} }; //under saucer light
-	PointLight l2 = { { -32.3f, 0.6f, 2.f, 0.f}, { 0.988f, 0.1f, 0.1f, 1.f}, {0.1f, 0.f, 0.f} }; //naecell light
-	PointLight l3 = { { -31.5f, -0.5f, 2.f, 0.f}, { 0.1f, 0.1f, 0.9f, 1.f}, {0.2f, 0.f, 0.f} }; //bottom light
+	PointLight l1 = { l1InitialTransform, { 0.8f, 0.77f, 0.72f, 1.f}, {0.15f, 0.f, 0.f} }; //under saucer light
+	PointLight l2 = { l2InitialTransform, { 0.988f, 0.1f, 0.1f, 1.f}, {0.1f, 0.f, 0.f} }; //naecell light
+	PointLight l3 = { l3InitialTransform, { 0.1f, 0.1f, 0.9f, 1.f}, {0.2f, 0.f, 0.f} }; //bottom light
 	std::vector<PointLight> lights(N_LIGHTS);
 	lights[0] = l1;
 	lights[1] = l2;
@@ -607,6 +452,167 @@ int main() try
 	// Reset State
 	glBindVertexArray( 0 );
 	glBindBuffer( GL_ARRAY_BUFFER, 0 );
+
+
+
+	// Animating
+	// Space ship animation
+	std::vector<KeyFramedFloat> spaceShipAnimatedFloats =
+		[&] ()
+		{
+			std::vector<KeyFramedFloat> ret;
+			// Need to do this otherwise the references are invalid because
+			// vector gets resized after emplace_back();
+			ret.reserve(6);
+
+			KeyFramedFloat& spaceShipXKF = ret.emplace_back();
+			KeyFramedFloat& spaceShipYKF = ret.emplace_back();
+			KeyFramedFloat& spaceShipZKF = ret.emplace_back();
+
+			KeyFramedFloat& spaceShipXRotKF = ret.emplace_back();
+			KeyFramedFloat& spaceShipYRotKF = ret.emplace_back();
+			KeyFramedFloat& spaceShipZRotKF = ret.emplace_back();
+
+
+			// Initial Transforms
+			spaceShipXKF.InsertKeyframe({
+				spaceShipInitialTransform.mPosition.x,
+				0.f,
+				ShapingFunctions::None // First shaping function is unused
+				});
+
+			spaceShipYKF.InsertKeyframe({
+				spaceShipInitialTransform.mPosition.y,
+				0.f,
+				ShapingFunctions::None // First shaping function is unused
+				});
+
+			spaceShipZKF.InsertKeyframe({
+				spaceShipInitialTransform.mPosition.z,
+				0.f,
+				ShapingFunctions::None // First shaping function is unused
+				});
+
+			spaceShipYRotKF.InsertKeyframe({
+				spaceShipInitialTransform.mRotation.y,
+				0.f,
+				ShapingFunctions::None
+				});
+
+
+			// Go Up
+			spaceShipXKF.InsertKeyframe({
+				spaceShipInitialTransform.mPosition.x,
+				7.f,
+				ShapingFunctions::Smoothstep
+				});
+
+			float newSpaceShipY = spaceShipInitialTransform.mPosition.y + 30.f;
+			spaceShipYKF.InsertKeyframe({
+				newSpaceShipY,
+				7.f,
+				ShapingFunctions::Smoothstep
+				});
+
+			spaceShipZKF.InsertKeyframe({
+				spaceShipInitialTransform.mPosition.z,
+				7.f,
+				ShapingFunctions::Smoothstep
+				});
+
+			float newSpaceShipRotY = spaceShipInitialTransform.mRotation.y + 100.0_deg;
+			spaceShipYRotKF.InsertKeyframe({
+				newSpaceShipRotY,
+				7.f,
+				ShapingFunctions::PolynomialEaseOut<4>
+				});
+
+
+			// Wait
+			spaceShipXKF.InsertKeyframe({
+				spaceShipInitialTransform.mPosition.x,
+				0.1f,
+				ShapingFunctions::None
+				});
+
+			spaceShipYKF.InsertKeyframe({
+				newSpaceShipY,
+				0.1f,
+				ShapingFunctions::None
+				});
+
+			spaceShipZKF.InsertKeyframe({
+				spaceShipInitialTransform.mPosition.z,
+				0.1f,
+				ShapingFunctions::None
+				});
+
+
+			// Warp Calculations
+			// Transform the whole ship
+			Vec3f spaceShipPositionAfterLiftOff{
+				spaceShipInitialTransform.mPosition.x,
+				newSpaceShipY,
+				spaceShipInitialTransform.mPosition.z
+			};
+
+			Vec3f spaceShipForward{
+				cosf(spaceShipInitialTransform.mRotation.x) * sinf(newSpaceShipRotY),
+				sinf(spaceShipInitialTransform.mRotation.x),
+				cosf(spaceShipInitialTransform.mRotation.x) * cosf(newSpaceShipRotY)
+			};
+
+			spaceShipForward = Vec4ToVec3(make_rotation_y(-90.0_deg) * Vec3ToVec4(normalize(spaceShipForward)));
+
+			Vec3f newSpaceShipPosition  = (spaceShipForward * 1000.f) + spaceShipPositionAfterLiftOff;
+
+
+			// Warp
+			spaceShipXKF.InsertKeyframe({
+				newSpaceShipPosition.x,
+				3.f,
+				ShapingFunctions::Polynomial<6>
+				});
+
+			spaceShipYKF.InsertKeyframe({
+				newSpaceShipPosition.y,
+				3.f,
+				ShapingFunctions::Polynomial<6>
+				});
+
+			spaceShipZKF.InsertKeyframe({
+				newSpaceShipPosition.z,
+				3.f,
+				ShapingFunctions::Polynomial<6>
+				});
+
+
+			// Disappear
+			spaceShipXKF.InsertKeyframe({
+				newSpaceShipPosition.x + 9999.f,
+				0.f,
+				ShapingFunctions::Instant
+				});
+
+			spaceShipYKF.InsertKeyframe({
+				newSpaceShipPosition.y + 9999.f,
+				0.f,
+				ShapingFunctions::Instant
+				});
+
+			spaceShipZKF.InsertKeyframe({
+				newSpaceShipPosition.z + 9999.f,
+				0.f,
+				ShapingFunctions::Instant
+				});
+
+
+			return ret;
+		} ();
+
+	state.animatedFloatsPtr = &spaceShipAnimatedFloats;
+
+
 
 	OGL_CHECKPOINT_ALWAYS();
 
@@ -724,6 +730,19 @@ int main() try
 		glUniform3f(locCamPos, state.camControl.cameraPos[0], state.camControl.cameraPos[1], state.camControl.cameraPos[2]);
 		//specular light uniforms
 
+		float ssXOffset = spaceShipAnimatedFloats[0].Update(state.dt) - spaceShipInitialTransform.mPosition.x;
+		float ssYOffset = spaceShipAnimatedFloats[1].Update(state.dt) - spaceShipInitialTransform.mPosition.y;
+		float ssZOffset = spaceShipAnimatedFloats[2].Update(state.dt) - spaceShipInitialTransform.mPosition.z;
+
+		for(size_t i = 0; i < lights.size(); i++)
+		{
+			Vec4f offsets{ ssXOffset,
+						   ssYOffset,
+						   ssZOffset,
+						   0.f};
+			lights[i].lPosition = lightOriginalPositions[i] + offsets;
+		}
+
 		glBindBuffer(GL_UNIFORM_BUFFER, uboLights);
 		glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(PointLight)* lights.size(), lights.data());
 		glBindBuffer(GL_UNIFORM_BUFFER, 0);
@@ -735,15 +754,17 @@ int main() try
 
 		// Spaceship
 		// We need to use the GetProjCameraWorldArray() from the instance group so we can later animate the spaceship
-		Transform& spaceShipOTrans = spaceShipInstances.GetTransform(0);
+		Transform& spaceShipTrans = spaceShipInstances.GetTransform(0);
 
-		spaceShipOTrans.mPosition.x = spaceShipAnimatedFloats[0].Update(state.dt);
-		spaceShipOTrans.mPosition.y = spaceShipAnimatedFloats[1].Update(state.dt);
-		spaceShipOTrans.mPosition.z = spaceShipAnimatedFloats[2].Update(state.dt);
+		spaceShipTrans.mPosition.x = spaceShipAnimatedFloats[0].Update(state.dt);
+		spaceShipTrans.mPosition.y = spaceShipAnimatedFloats[1].Update(state.dt);
+		spaceShipTrans.mPosition.z = spaceShipAnimatedFloats[2].Update(state.dt);
 
-		spaceShipOTrans.mRotation.x = spaceShipAnimatedFloats[3].Update(state.dt);
-		spaceShipOTrans.mRotation.y = spaceShipAnimatedFloats[4].Update(state.dt);
-		spaceShipOTrans.mRotation.z = spaceShipAnimatedFloats[5].Update(state.dt);
+		spaceShipTrans.mRotation.x = spaceShipAnimatedFloats[3].Update(state.dt);
+		spaceShipTrans.mRotation.y = spaceShipAnimatedFloats[4].Update(state.dt);
+		spaceShipTrans.mRotation.z = spaceShipAnimatedFloats[5].Update(state.dt);
+
+
 
 		std::vector<Mat44f> projectionList2 = spaceShipInstances.GetProjCameraWorldArray(projection, world2camera);
 		glUniformMatrix4fv(locProj, (GLsizei) projectionList2.size(), GL_TRUE, projectionList2.data()[0].v );

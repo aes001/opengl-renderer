@@ -31,6 +31,8 @@ extern "C"
 #include "ModelObject.hpp"
 #include "ShapeObject.hpp"
 #include "LookAt.hpp"
+#include "AnimationTools.hpp"
+#include "GeometricHelpers.hpp"
 #include "Light.hpp"
 
 
@@ -63,6 +65,7 @@ namespace
 		std::vector<ShaderProgram*> progs;
 		const Vec3f diffuseLight = { 0.729f, 0.808f, 0.92f }; //sky: 0.529f, 0.808f, 0.92f, warm: 0.9f, 0.9f, 0.6f
 		Vec3f currentGlobalLight;
+		std::vector<KeyFramedFloat>* animatedFloatsPtr;
 		float dt;
 		float speedMod;
 		bool pressedKeys[KEY_COUNT_GLFW] = { false };
@@ -285,7 +288,7 @@ int main() try
 
 	ObjectInstanceGroup landingPadInstances( landingPadGPU );
 	landingPadInstances.CreateInstance( Transform( { .mPosition{-19.f,  -0.97f, 10.f} } ) );
-	landingPadInstances.CreateInstance( Transform( { .mPosition{-32.5f, -0.97f, 2.f } } ) ); //og -34.7f, -0.97f, 1.f 
+	landingPadInstances.CreateInstance( Transform( { .mPosition{-32.5f, -0.97f, 2.f } } ) ); //og -34.7f, -0.97f, 1.f
 
 
 	GLuint vaoLandingPad = 0;
@@ -341,27 +344,29 @@ int main() try
 	);
 	glEnableVertexAttribArray(4);
 
-	// Space Ship
 	// Combine the two model objects
-	ModelObject shipModel = create_ship();
-	const GLsizei spaceShipVertsCount = shipModel.Vertices().size();
-
-	//ModelObject cubeTest = MakeCylinder( true, 5, {0.7f, 0.f, 0.f}, cubeTransform );
-	//ModelObject cubeTest = MakeCone( true, 5, {0.8f, 0.8f, 0.8f}, cubeTransform );
+	ModelObject spaceShipModel = create_ship();
+	const GLsizei spaceShipVertsCount = spaceShipModel.Vertices().size();
 
 	// Creaete the vbos for the model object
-	ModelObjectGPU shipModelGPU(shipModel);
+	ModelObjectGPU spaceShipModelGPU( spaceShipModel );
 
 	// Create an instance of the model object
 	// Makes the model object have a position that we can later modify
-	ObjectInstanceGroup shipModelInstance(shipModelGPU);
-	shipModelInstance.CreateInstance({ -34.7f, -0.97f, 1.f });/* This is also a transform object like the ones we created for the cube and cylinder */
+
+	Transform spaceShipInitialTransform{
+		.mPosition{ -34.7f, -0.97f, 1.f },
+		.mRotation{ 0.f, 0.f, 0.f },
+		.mScale{ 1.f, 1.f, 1.f }
+	};
+	ObjectInstanceGroup spaceShipInstances( spaceShipModelGPU );
+	spaceShipInstances.CreateInstance( spaceShipInitialTransform );
 
 	GLuint vaoSpaceShip = 0;
 	glGenVertexArrays( 1, &vaoSpaceShip );
 	glBindVertexArray( vaoSpaceShip );
 	//positions
-	glBindBuffer( GL_ARRAY_BUFFER, shipModelGPU.BufferId(kVboPositions) );
+	glBindBuffer( GL_ARRAY_BUFFER, spaceShipModelGPU.BufferId(kVboPositions) );
 	glVertexAttribPointer(
 		0,
 		3, GL_FLOAT, GL_FALSE,
@@ -369,9 +374,9 @@ int main() try
 		0
 	);
 	glEnableVertexAttribArray( 0 );
-	
+
 	//colours
-	glBindBuffer( GL_ARRAY_BUFFER, shipModelGPU.BufferId(kVboVertexColor) );
+	glBindBuffer( GL_ARRAY_BUFFER, spaceShipModelGPU.BufferId(kVboVertexColor) );
 	glVertexAttribPointer(
 		1,
 		3, GL_FLOAT, GL_FALSE,
@@ -381,7 +386,7 @@ int main() try
 	glEnableVertexAttribArray( 1 );
 
 	//normals
-	glBindBuffer(GL_ARRAY_BUFFER, shipModelGPU.BufferId(kVboNormals));
+	glBindBuffer(GL_ARRAY_BUFFER, spaceShipModelGPU.BufferId(kVboNormals));
 	glVertexAttribPointer(
 		2,
 		3, GL_FLOAT, GL_FALSE,
@@ -391,7 +396,7 @@ int main() try
 	glEnableVertexAttribArray(2);
 
 	//specular reflectance
-	glBindBuffer(GL_ARRAY_BUFFER, shipModelGPU.BufferId(kVboVertexSpecular));
+	glBindBuffer(GL_ARRAY_BUFFER, spaceShipModelGPU.BufferId(kVboVertexSpecular));
 	glVertexAttribPointer(
 		3,
 		3, GL_FLOAT, GL_FALSE,
@@ -401,7 +406,7 @@ int main() try
 	glEnableVertexAttribArray(3);
 
 	//shininess
-	glBindBuffer(GL_ARRAY_BUFFER, shipModelGPU.BufferId(kVboVertexShininess));
+	glBindBuffer(GL_ARRAY_BUFFER, spaceShipModelGPU.BufferId(kVboVertexShininess));
 	glVertexAttribPointer(
 		4,
 		1, GL_FLOAT, GL_FALSE,
@@ -414,10 +419,14 @@ int main() try
 	state.currentGlobalLight = state.diffuseLight;
 
 	#define N_LIGHTS 3
+	Vec4f l1InitialTransform = { -33.5f, 0.3f, 2.f, 0.f};
+	Vec4f l2InitialTransform = { -32.3f, 0.6f, 2.f, 0.f};
+	Vec4f l3InitialTransform = { -31.5f, -0.5f, 2.f, 0.f};
+	std::vector<Vec4f> lightOriginalPositions = {l1InitialTransform, l2InitialTransform, l3InitialTransform};
 	//lights: position, colour, intensity
-	PointLight l1 = { { -33.5f, 0.3f, 2.f, 0.f}, { 0.8f, 0.77f, 0.72f, 1.f}, {0.15f, 0.f, 0.f} }; //under saucer light
-	PointLight l2 = { { -32.3f, 0.6f, 2.f, 0.f}, { 0.988f, 0.1f, 0.1f, 1.f}, {0.1f, 0.f, 0.f} }; //naecell light
-	PointLight l3 = { { -31.5f, -0.5f, 2.f, 0.f}, { 0.1f, 0.1f, 0.9f, 1.f}, {0.2f, 0.f, 0.f} }; //bottom light
+	PointLight l1 = { l1InitialTransform, { 0.8f, 0.77f, 0.72f, 1.f}, {0.15f, 0.f, 0.f} }; //under saucer light
+	PointLight l2 = { l2InitialTransform, { 0.988f, 0.1f, 0.1f, 1.f}, {0.1f, 0.f, 0.f} }; //naecell light
+	PointLight l3 = { l3InitialTransform, { 0.1f, 0.1f, 0.9f, 1.f}, {0.2f, 0.f, 0.f} }; //bottom light
 	std::vector<PointLight> lights(N_LIGHTS);
 	lights[0] = l1;
 	lights[1] = l2;
@@ -443,6 +452,167 @@ int main() try
 	// Reset State
 	glBindVertexArray( 0 );
 	glBindBuffer( GL_ARRAY_BUFFER, 0 );
+
+
+
+	// Animating
+	// Space ship animation
+	std::vector<KeyFramedFloat> spaceShipAnimatedFloats =
+		[&] ()
+		{
+			std::vector<KeyFramedFloat> ret;
+			// Need to do this otherwise the references are invalid because
+			// vector gets resized after emplace_back();
+			ret.reserve(6);
+
+			KeyFramedFloat& spaceShipXKF = ret.emplace_back();
+			KeyFramedFloat& spaceShipYKF = ret.emplace_back();
+			KeyFramedFloat& spaceShipZKF = ret.emplace_back();
+
+			KeyFramedFloat& spaceShipXRotKF = ret.emplace_back();
+			KeyFramedFloat& spaceShipYRotKF = ret.emplace_back();
+			KeyFramedFloat& spaceShipZRotKF = ret.emplace_back();
+
+
+			// Initial Transforms
+			spaceShipXKF.InsertKeyframe({
+				spaceShipInitialTransform.mPosition.x,
+				0.f,
+				ShapingFunctions::None // First shaping function is unused
+				});
+
+			spaceShipYKF.InsertKeyframe({
+				spaceShipInitialTransform.mPosition.y,
+				0.f,
+				ShapingFunctions::None // First shaping function is unused
+				});
+
+			spaceShipZKF.InsertKeyframe({
+				spaceShipInitialTransform.mPosition.z,
+				0.f,
+				ShapingFunctions::None // First shaping function is unused
+				});
+
+			spaceShipYRotKF.InsertKeyframe({
+				spaceShipInitialTransform.mRotation.y,
+				0.f,
+				ShapingFunctions::None
+				});
+
+
+			// Go Up
+			spaceShipXKF.InsertKeyframe({
+				spaceShipInitialTransform.mPosition.x,
+				7.f,
+				ShapingFunctions::Smoothstep
+				});
+
+			float newSpaceShipY = spaceShipInitialTransform.mPosition.y + 30.f;
+			spaceShipYKF.InsertKeyframe({
+				newSpaceShipY,
+				7.f,
+				ShapingFunctions::Smoothstep
+				});
+
+			spaceShipZKF.InsertKeyframe({
+				spaceShipInitialTransform.mPosition.z,
+				7.f,
+				ShapingFunctions::Smoothstep
+				});
+
+			float newSpaceShipRotY = spaceShipInitialTransform.mRotation.y + 100.0_deg;
+			spaceShipYRotKF.InsertKeyframe({
+				newSpaceShipRotY,
+				7.f,
+				ShapingFunctions::PolynomialEaseOut<4>
+				});
+
+
+			// Wait
+			spaceShipXKF.InsertKeyframe({
+				spaceShipInitialTransform.mPosition.x,
+				0.1f,
+				ShapingFunctions::None
+				});
+
+			spaceShipYKF.InsertKeyframe({
+				newSpaceShipY,
+				0.1f,
+				ShapingFunctions::None
+				});
+
+			spaceShipZKF.InsertKeyframe({
+				spaceShipInitialTransform.mPosition.z,
+				0.1f,
+				ShapingFunctions::None
+				});
+
+
+			// Warp Calculations
+			// Transform the whole ship
+			Vec3f spaceShipPositionAfterLiftOff{
+				spaceShipInitialTransform.mPosition.x,
+				newSpaceShipY,
+				spaceShipInitialTransform.mPosition.z
+			};
+
+			Vec3f spaceShipForward{
+				cosf(spaceShipInitialTransform.mRotation.x) * sinf(newSpaceShipRotY),
+				sinf(spaceShipInitialTransform.mRotation.x),
+				cosf(spaceShipInitialTransform.mRotation.x) * cosf(newSpaceShipRotY)
+			};
+
+			spaceShipForward = Vec4ToVec3(make_rotation_y(-90.0_deg) * Vec3ToVec4(normalize(spaceShipForward)));
+
+			Vec3f newSpaceShipPosition  = (spaceShipForward * 1000.f) + spaceShipPositionAfterLiftOff;
+
+
+			// Warp
+			spaceShipXKF.InsertKeyframe({
+				newSpaceShipPosition.x,
+				3.f,
+				ShapingFunctions::Polynomial<6>
+				});
+
+			spaceShipYKF.InsertKeyframe({
+				newSpaceShipPosition.y,
+				3.f,
+				ShapingFunctions::Polynomial<6>
+				});
+
+			spaceShipZKF.InsertKeyframe({
+				newSpaceShipPosition.z,
+				3.f,
+				ShapingFunctions::Polynomial<6>
+				});
+
+
+			// Disappear
+			spaceShipXKF.InsertKeyframe({
+				newSpaceShipPosition.x + 9999.f,
+				0.f,
+				ShapingFunctions::Instant
+				});
+
+			spaceShipYKF.InsertKeyframe({
+				newSpaceShipPosition.y + 9999.f,
+				0.f,
+				ShapingFunctions::Instant
+				});
+
+			spaceShipZKF.InsertKeyframe({
+				newSpaceShipPosition.z + 9999.f,
+				0.f,
+				ShapingFunctions::Instant
+				});
+
+
+			return ret;
+		} ();
+
+	state.animatedFloatsPtr = &spaceShipAnimatedFloats;
+
+
 
 	OGL_CHECKPOINT_ALWAYS();
 
@@ -548,7 +718,7 @@ int main() try
 		std::vector<Mat44f> projectionList = landingPadInstances.GetProjCameraWorldArray(projection, world2camera);
 		glUniformMatrix4fv(locProj, (GLsizei)projectionList.size(), GL_TRUE, projectionList.data()[0].v);
 		//get translations
-		std::vector<std::array<float, 3>> transformList = landingPadInstances.GetTranslationArray();	
+		std::vector<std::array<float, 3>> transformList = landingPadInstances.GetTranslationArray();
 		glUniform3fv(locModelTrans, (GLsizei) projectionList.size(), transformList.data()[0].data());
 		//get normal updates
 		std::vector<Mat33f> normalUpdates = landingPadInstances.GetNormalUpdateArray();
@@ -559,6 +729,19 @@ int main() try
 		glUniform3f(locAmbient, 0.05f, 0.05f, 0.05f); // light ambient
 		glUniform3f(locCamPos, state.camControl.cameraPos[0], state.camControl.cameraPos[1], state.camControl.cameraPos[2]);
 		//specular light uniforms
+
+		float ssXOffset = spaceShipAnimatedFloats[0].Update(state.dt) - spaceShipInitialTransform.mPosition.x;
+		float ssYOffset = spaceShipAnimatedFloats[1].Update(state.dt) - spaceShipInitialTransform.mPosition.y;
+		float ssZOffset = spaceShipAnimatedFloats[2].Update(state.dt) - spaceShipInitialTransform.mPosition.z;
+
+		for(size_t i = 0; i < lights.size(); i++)
+		{
+			Vec4f offsets{ ssXOffset,
+						   ssYOffset,
+						   ssZOffset,
+						   0.f};
+			lights[i].lPosition = lightOriginalPositions[i] + offsets;
+		}
 
 		glBindBuffer(GL_UNIFORM_BUFFER, uboLights);
 		glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(PointLight)* lights.size(), lights.data());
@@ -571,17 +754,29 @@ int main() try
 
 		// Spaceship
 		// We need to use the GetProjCameraWorldArray() from the instance group so we can later animate the spaceship
-		std::vector<Mat44f> projectionList2 = shipModelInstance.GetProjCameraWorldArray(projection, world2camera);
+		Transform& spaceShipTrans = spaceShipInstances.GetTransform(0);
+
+		spaceShipTrans.mPosition.x = spaceShipAnimatedFloats[0].Update(state.dt);
+		spaceShipTrans.mPosition.y = spaceShipAnimatedFloats[1].Update(state.dt);
+		spaceShipTrans.mPosition.z = spaceShipAnimatedFloats[2].Update(state.dt);
+
+		spaceShipTrans.mRotation.x = spaceShipAnimatedFloats[3].Update(state.dt);
+		spaceShipTrans.mRotation.y = spaceShipAnimatedFloats[4].Update(state.dt);
+		spaceShipTrans.mRotation.z = spaceShipAnimatedFloats[5].Update(state.dt);
+
+
+
+		std::vector<Mat44f> projectionList2 = spaceShipInstances.GetProjCameraWorldArray(projection, world2camera);
 		glUniformMatrix4fv(locProj, (GLsizei) projectionList2.size(), GL_TRUE, projectionList2.data()[0].v );
 		//get ship translation
-		std::vector<std::array<float, 3>> shipTransformList = shipModelInstance.GetTranslationArray();
+		std::vector<std::array<float, 3>> shipTransformList = spaceShipInstances.GetTranslationArray();
 		glUniform3fv(locModelTrans, (GLsizei)projectionList2.size(), shipTransformList.data()[0].data());
 		//get normal updates
-		std::vector<Mat33f> shipNormalUpdates = shipModelInstance.GetNormalUpdateArray();
+		std::vector<Mat33f> shipNormalUpdates = spaceShipInstances.GetNormalUpdateArray();
 		glUniformMatrix3fv(locNormalTrans, (GLsizei)shipNormalUpdates.size(), GL_TRUE, shipNormalUpdates.data()[0].v);
 
 		glBindVertexArray( vaoSpaceShip );
-		glDrawArraysInstanced( GL_TRIANGLES, 0, spaceShipVertsCount, shipModelInstance.GetInstanceCount());
+		glDrawArraysInstanced( GL_TRIANGLES, 0, spaceShipVertsCount, spaceShipInstances.GetInstanceCount());
 
 
 		// Cleanup
@@ -595,7 +790,6 @@ int main() try
 	}
 
 	// Cleanup.
-	//TODO: additional cleanup
 	for( auto& prog : state.progs )
 	{
 		prog = nullptr;
@@ -627,26 +821,43 @@ namespace
 			return;
 		}
 
-		auto* state = static_cast<State_*>(glfwGetWindowUserPointer(aWindow));
-
-		if( GLFW_PRESS == aAction )
+		if (auto* state = static_cast<State_*>(glfwGetWindowUserPointer(aWindow)))
 		{
-			state->pressedKeys[aKey] = true;
-		}
-		else if( aAction == GLFW_RELEASE )
-		{
-			state->pressedKeys[aKey] = false;
-		}
+			if( GLFW_PRESS == aAction )
+			{
+				state->pressedKeys[aKey] = true;
+			}
+			else if( aAction == GLFW_RELEASE )
+			{
+				state->pressedKeys[aKey] = false;
+			}
 
-		//key actions
-		if (GLFW_KEY_1 == aKey && GLFW_PRESS == aAction)
-			(state->lights)->at(0).lColour.w = (state->lights)->at(0).lColour.w == 1.f ? 0.f : 1.f; //toggle light on/off
-		if (GLFW_KEY_2 == aKey && GLFW_PRESS == aAction)
-			(state->lights)->at(1).lColour.w = (state->lights)->at(1).lColour.w == 1.f ? 0.f : 1.f;
-		if (GLFW_KEY_3 == aKey && GLFW_PRESS == aAction)
-			(state->lights)->at(2).lColour.w = (state->lights)->at(2).lColour.w == 1.f ? 0.f : 1.f;
-		if (GLFW_KEY_4 == aKey && GLFW_PRESS == aAction)
-			state->currentGlobalLight = state->currentGlobalLight == Vec3f{0.f, 0.f, 0.f} ? state->diffuseLight : Vec3f{0.f, 0.f, 0.f};
+			if( GLFW_KEY_F == aKey && GLFW_PRESS == aAction )
+			{
+				for ( auto& anim : *(state->animatedFloatsPtr) )
+				{
+					anim.Toggle();
+				}
+			}
+
+			if( GLFW_KEY_R == aKey && GLFW_PRESS == aAction )
+			{
+				for ( auto& anim : *(state->animatedFloatsPtr) )
+				{
+					anim.Stop();
+				}
+			}
+
+			//key actions
+			if (GLFW_KEY_1 == aKey && GLFW_PRESS == aAction)
+				(state->lights)->at(0).lColour.w = (state->lights)->at(0).lColour.w == 1.f ? 0.f : 1.f; //toggle light on/off
+			if (GLFW_KEY_2 == aKey && GLFW_PRESS == aAction)
+				(state->lights)->at(1).lColour.w = (state->lights)->at(1).lColour.w == 1.f ? 0.f : 1.f;
+			if (GLFW_KEY_3 == aKey && GLFW_PRESS == aAction)
+				(state->lights)->at(2).lColour.w = (state->lights)->at(2).lColour.w == 1.f ? 0.f : 1.f;
+			if (GLFW_KEY_4 == aKey && GLFW_PRESS == aAction)
+				state->currentGlobalLight = state->currentGlobalLight == Vec3f{0.f, 0.f, 0.f} ? state->diffuseLight : Vec3f{0.f, 0.f, 0.f};
+		}
 	}
 
 
@@ -743,9 +954,9 @@ namespace
 	}
 }
 
-namespace 
+namespace
 {
-	ModelObject create_ship() 
+	ModelObject create_ship()
 	{
 		ShapeMaterial hullPlating
 		{

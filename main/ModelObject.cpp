@@ -539,7 +539,7 @@ Mat44f Transform::Matrix() const
 	return translate * rotation * scale;
 }
 
-Mat33f Transform::NormalUpdateMatrix() const 
+Mat33f Transform::NormalUpdateMatrix() const
 {
 	Mat44f rotX = make_rotation_x(mRotation.x);
 	Mat44f rotY = make_rotation_y(mRotation.y);

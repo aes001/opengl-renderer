@@ -118,7 +118,12 @@ enum eBufferType : size_t
 
 
 
-
+/*
+ *	Scope bound VBO resource management (RAII)
+ *	This class will create your VBOs and will delete the buffers once this
+ *	object goes out of scope. This is done by calling glDeleteBuffers() in its
+ *	destructor.
+ */
 class ModelObjectGPU
 {
 public:
@@ -178,6 +183,15 @@ struct Transform
 };
 
 
+constexpr
+Transform operator+( const Transform& left, const Transform& right ) noexcept
+{
+	return Transform( {
+		.mPosition = left.mPosition + right.mPosition,
+		.mRotation = left.mRotation + right.mRotation,
+		.mScale    = left.mScale    + right.mScale
+	} );
+}
 
 
 // Deprecated

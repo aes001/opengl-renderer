@@ -126,11 +126,13 @@ ModelObject::ModelObject( const char* objPath, uint32_t loadFlags /*= kLoadEvery
 }
 
 
-ModelObject::ModelObject( std::vector<Vec3f> positions, std::vector<Vec3f> normals, std::vector<Vec3f> colours )
+ModelObject::ModelObject( std::vector<Vec3f> positions, std::vector<Vec3f> normals, std::vector<Vec3f> colours, std::vector<Vec3f> specular, std::vector<float> shininess )
 	: mVertices( std::move(positions) )
 	, mNormals( std::move(normals) )
 	, mVertexColours( std::move(colours) )
-	, mLoadFlags ( kLoadVertexColour )
+	, mVertexSpecular( std::move(specular) )
+	, mVertexShininess( std::move(shininess) )
+	, mLoadFlags ( kLoadVertexColour | kLoadVertexSpecular | kLoadVertexShininess )
 {
 }
 
@@ -586,6 +588,39 @@ std::vector<Mat44f> ObjectInstanceGroup::GetProjCameraWorldArray(const Mat44f& p
 
 	return ret;
 }
+
+
+std::vector<std::array<float, 3>> ObjectInstanceGroup::GetTranslationArray()
+{
+	std::vector<std::array<float, 3>> ret;
+	ret.reserve(GetInstanceCount());
+
+	for (const auto& transform : GetTransforms())
+	{
+		std::array<float, 3> transTemp{
+			transform.mPosition.x,
+			transform.mPosition.y,
+			transform.mPosition.z
+		};
+		ret.push_back(std::move(transTemp));
+	}
+
+	return std::move(ret);
+}
+
+std::vector<Mat33f> ObjectInstanceGroup::GetNormalUpdateArray() const
+{
+	std::vector<Mat33f> ret;
+	ret.reserve(mTransformList.size());
+
+	for (const auto& transform : GetTransforms())
+	{
+		ret.push_back(transform.NormalUpdateMatrix());
+	}
+
+	return ret;
+}
+
 
 
 const std::vector<Transform>& ObjectInstanceGroup::GetTransforms() const

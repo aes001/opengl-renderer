@@ -25,11 +25,13 @@ extern "C"
 
 #include "../vmlib/vec4.hpp"
 #include "../vmlib/mat44.hpp"
+#include "../vmlib/mat33.hpp"
 
 #include "defaults.hpp"
 #include "ModelObject.hpp"
 #include "ShapeObject.hpp"
 #include "LookAt.hpp"
+#include "Light.hpp"
 
 
 namespace
@@ -57,7 +59,10 @@ namespace
 
 	struct State_
 	{
+		std::vector<PointLight>* lights;
 		std::vector<ShaderProgram*> progs;
+		const Vec3f diffuseLight = { 0.729f, 0.808f, 0.92f }; //sky: 0.529f, 0.808f, 0.92f, warm: 0.9f, 0.9f, 0.6f
+		Vec3f currentGlobalLight;
 		float dt;
 		float speedMod;
 		bool pressedKeys[KEY_COUNT_GLFW] = { false };
@@ -182,7 +187,7 @@ int main() try
 
 	glEnable( GL_FRAMEBUFFER_SRGB );
 	glEnable( GL_CULL_FACE );
-	glClearColor( 0.2f, 0.2f, 0.2f, 0.0f );
+	glClearColor( 0.529f, 0.808f, 0.92f, 0.0f );
 	glEnable( GL_DEPTH_TEST );
 
 	OGL_CHECKPOINT_ALWAYS();
@@ -280,7 +285,7 @@ int main() try
 
 	ObjectInstanceGroup landingPadInstances( landingPadGPU );
 	landingPadInstances.CreateInstance( Transform( { .mPosition{-19.f,  -0.97f, 10.f} } ) );
-	landingPadInstances.CreateInstance( Transform( { .mPosition{-34.7f, -0.97f, 1.f } } ) );
+	landingPadInstances.CreateInstance( Transform( { .mPosition{-32.5f, -0.97f, 2.f } } ) ); //og -34.7f, -0.97f, 1.f 
 
 
 	GLuint vaoLandingPad = 0;
@@ -294,8 +299,8 @@ int main() try
 		0,
 		0
 	);
-
 	glEnableVertexAttribArray( 0 );
+
 	//colours
 	glBindBuffer( GL_ARRAY_BUFFER, landingPadGPU.BufferId(kVboVertexColor) );
 	glVertexAttribPointer(
@@ -304,8 +309,8 @@ int main() try
 		0,
 		0
 	);
-
 	glEnableVertexAttribArray( 1 );
+
 	//normals
 	glBindBuffer(GL_ARRAY_BUFFER, landingPadGPU.BufferId(kVboNormals));
 	glVertexAttribPointer(
@@ -314,53 +319,49 @@ int main() try
 		0,
 		0
 	);
-
-
 	glEnableVertexAttribArray(2);
 
+	//specular reflectance
+	glBindBuffer(GL_ARRAY_BUFFER, landingPadGPU.BufferId(kVboVertexSpecular));
+	glVertexAttribPointer(
+		3,
+		3, GL_FLOAT, GL_FALSE,
+		0,
+		0
+	);
+	glEnableVertexAttribArray(3);
+
+	//shininess
+	glBindBuffer(GL_ARRAY_BUFFER, landingPadGPU.BufferId(kVboVertexShininess));
+	glVertexAttribPointer(
+		4,
+		1, GL_FLOAT, GL_FALSE,
+		0,
+		0
+	);
+	glEnableVertexAttribArray(4);
 
 	// Space Ship
-
-
-
-	// Create a transform for a cube
-	/*
-	Transform cubeTransform{
-		.mPosition{5.f, 0.f, 3.f},
-		.mRotation{0.785398f, 0.f, 0.f},
-		.mScale{0.5f, 0.5f, 0.5f}
-	};
-	ModelObject cubeTest = MakeCube( {0.8f, 0.8f, 0.8f}, cubeTransform );
-
-	// Create a transform for a cylinder
-	Transform cylinderTransform{
-		.mPosition{5.f, 7.f, 3.f},
-		.mRotation{2.f, 0.f, 0.f},
-		.mScale{2.f, 2.f, 2.f}
-	};
-	ModelObject cylinderTest = MakeCylinder( true, 10, {0.7f, 0.7f, 0.7f}, cylinderTransform );
-	*/
-
 	// Combine the two model objects
-	ModelObject combined = create_ship();
-	const GLsizei spaceShipVertsCount = combined.Vertices().size();
+	ModelObject shipModel = create_ship();
+	const GLsizei spaceShipVertsCount = shipModel.Vertices().size();
 
 	//ModelObject cubeTest = MakeCylinder( true, 5, {0.7f, 0.f, 0.f}, cubeTransform );
 	//ModelObject cubeTest = MakeCone( true, 5, {0.8f, 0.8f, 0.8f}, cubeTransform );
 
 	// Creaete the vbos for the model object
-	ModelObjectGPU cubeTestGPU( combined );
+	ModelObjectGPU shipModelGPU(shipModel);
 
 	// Create an instance of the model object
 	// Makes the model object have a position that we can later modify
-	ObjectInstanceGroup cubeTestInstance( cubeTestGPU );
-	cubeTestInstance.CreateInstance({/* This is also a transform object like the ones we created for the cube and cylinder */});
+	ObjectInstanceGroup shipModelInstance(shipModelGPU);
+	shipModelInstance.CreateInstance({ -34.7f, -0.97f, 1.f });/* This is also a transform object like the ones we created for the cube and cylinder */
 
 	GLuint vaoSpaceShip = 0;
 	glGenVertexArrays( 1, &vaoSpaceShip );
 	glBindVertexArray( vaoSpaceShip );
 	//positions
-	glBindBuffer( GL_ARRAY_BUFFER, cubeTestGPU.BufferId(kVboPositions) );
+	glBindBuffer( GL_ARRAY_BUFFER, shipModelGPU.BufferId(kVboPositions) );
 	glVertexAttribPointer(
 		0,
 		3, GL_FLOAT, GL_FALSE,
@@ -370,7 +371,7 @@ int main() try
 	glEnableVertexAttribArray( 0 );
 	
 	//colours
-	glBindBuffer( GL_ARRAY_BUFFER, cubeTestGPU.BufferId(kVboVertexColor) );
+	glBindBuffer( GL_ARRAY_BUFFER, shipModelGPU.BufferId(kVboVertexColor) );
 	glVertexAttribPointer(
 		1,
 		3, GL_FLOAT, GL_FALSE,
@@ -380,7 +381,7 @@ int main() try
 	glEnableVertexAttribArray( 1 );
 
 	//normals
-	glBindBuffer(GL_ARRAY_BUFFER, cubeTestGPU.BufferId(kVboNormals));
+	glBindBuffer(GL_ARRAY_BUFFER, shipModelGPU.BufferId(kVboNormals));
 	glVertexAttribPointer(
 		2,
 		3, GL_FLOAT, GL_FALSE,
@@ -389,7 +390,55 @@ int main() try
 	);
 	glEnableVertexAttribArray(2);
 
+	//specular reflectance
+	glBindBuffer(GL_ARRAY_BUFFER, shipModelGPU.BufferId(kVboVertexSpecular));
+	glVertexAttribPointer(
+		3,
+		3, GL_FLOAT, GL_FALSE,
+		0,
+		0
+	);
+	glEnableVertexAttribArray(3);
 
+	//shininess
+	glBindBuffer(GL_ARRAY_BUFFER, shipModelGPU.BufferId(kVboVertexShininess));
+	glVertexAttribPointer(
+		4,
+		1, GL_FLOAT, GL_FALSE,
+		0,
+		0
+	);
+	glEnableVertexAttribArray(4);
+
+	//LIGHTS
+	state.currentGlobalLight = state.diffuseLight;
+
+	#define N_LIGHTS 3
+	//lights: position, colour, intensity
+	PointLight l1 = { { -33.5f, 0.3f, 2.f, 0.f}, { 0.8f, 0.77f, 0.72f, 1.f}, {0.15f, 0.f, 0.f} }; //under saucer light
+	PointLight l2 = { { -32.3f, 0.6f, 2.f, 0.f}, { 0.988f, 0.1f, 0.1f, 1.f}, {0.1f, 0.f, 0.f} }; //naecell light
+	PointLight l3 = { { -31.5f, -0.5f, 2.f, 0.f}, { 0.1f, 0.1f, 0.9f, 1.f}, {0.2f, 0.f, 0.f} }; //bottom light
+	std::vector<PointLight> lights(N_LIGHTS);
+	lights[0] = l1;
+	lights[1] = l2;
+	lights[2] = l3;
+	state.lights = &lights;
+
+	GLuint uboLights;
+	glGenBuffers(1, &uboLights);
+	glBindBuffer(GL_UNIFORM_BUFFER, uboLights);
+	glBufferData(GL_UNIFORM_BUFFER, sizeof(PointLight)* N_LIGHTS, nullptr, GL_DYNAMIC_DRAW);
+	glBindBuffer(GL_UNIFORM_BUFFER, 0);
+
+	//bind to material shader
+	GLuint blockIndex = glGetUniformBlockIndex(prog2.programId(), "LightBlock");
+	glUniformBlockBinding(prog2.programId(), blockIndex, 0);
+	glBindBufferBase(GL_UNIFORM_BUFFER, 0, uboLights);
+
+	//bind to default shader
+	GLuint blockIndexdefault = glGetUniformBlockIndex(prog.programId(), "LightBlock");
+	glUniformBlockBinding(prog.programId(), blockIndexdefault, 0);
+	glBindBufferBase(GL_UNIFORM_BUFFER, 0, uboLights);
 
 	// Reset State
 	glBindVertexArray( 0 );
@@ -458,14 +507,23 @@ int main() try
 		// Rendering the terrain
 		glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
 		glUseProgram( prog.programId() );
-
+		GLint locCamPosTerrain = glGetUniformLocation(prog.programId(), "uCamPosition");
 		glUniformMatrix4fv(0, 1, GL_TRUE, projCameraWorld.v);
 
 		Vec3f lightDir = normalize(Vec3f{ -1.f, 1.f, 0.5f }); // light direction
 		glUniform3fv(1, 1, &lightDir.x);
-		glUniform3f(2, 0.9f, 0.9f, 0.6f); // light diffuse
+		glUniform3f(2, state.currentGlobalLight[0], state.currentGlobalLight[1], state.currentGlobalLight[2] ); // light diffuse: 0.9f, 0.9f, 0.6f
 		glUniform3f(3, 0.05f, 0.05f, 0.05f); // light ambient
 
+		//camera
+		glUniform3f(locCamPosTerrain, state.camControl.cameraPos[0], state.camControl.cameraPos[1], state.camControl.cameraPos[2]);
+
+		//lights
+		glBindBuffer(GL_UNIFORM_BUFFER, uboLights);
+		glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(PointLight) * lights.size(), lights.data());
+		glBindBuffer(GL_UNIFORM_BUFFER, 0);
+
+		//action
 		glBindVertexArray( vao );
 		glActiveTexture( GL_TEXTURE0 );
 		glBindTexture( GL_TEXTURE_2D, terrainGPU.BufferId(kDiffuseTexture) );
@@ -479,15 +537,33 @@ int main() try
 		glUseProgram( prog2.programId() );
 
 		GLint locProj     = glGetUniformLocation( prog2.programId(), "uProjCameraWorld" );
+		GLint locModelTrans = glGetUniformLocation(prog2.programId(), "uModelTransform");
+		GLint locNormalTrans = glGetUniformLocation(prog2.programId(), "uNormalTransform");
 		GLint locLightDir = glGetUniformLocation (prog2.programId(), "uLightDir" );
 		GLint locDiffuse  = glGetUniformLocation( prog2.programId(), "uLightDiffuse" );
 		GLint locAmbient  = glGetUniformLocation( prog2.programId(), "uSceneAmbient" );
 
+		GLint locCamPos = glGetUniformLocation(prog2.programId(), "uCamPosition");
+		//get camera projections
 		std::vector<Mat44f> projectionList = landingPadInstances.GetProjCameraWorldArray(projection, world2camera);
-		glUniformMatrix4fv(locProj, (GLsizei) projectionList.size(), GL_TRUE, projectionList.data()[0].v );
+		glUniformMatrix4fv(locProj, (GLsizei)projectionList.size(), GL_TRUE, projectionList.data()[0].v);
+		//get translations
+		std::vector<std::array<float, 3>> transformList = landingPadInstances.GetTranslationArray();	
+		glUniform3fv(locModelTrans, (GLsizei) projectionList.size(), transformList.data()[0].data());
+		//get normal updates
+		std::vector<Mat33f> normalUpdates = landingPadInstances.GetNormalUpdateArray();
+		glUniformMatrix3fv(locNormalTrans, (GLsizei)normalUpdates.size(), GL_TRUE, normalUpdates.data()[0].v);
+
 		glUniform3fv(locLightDir, 1, &lightDir.x);
-		glUniform3f(locDiffuse, 0.9f, 0.9f, 0.6f); // light diffuse
+		glUniform3f(locDiffuse, state.currentGlobalLight[0], state.currentGlobalLight[1], state.currentGlobalLight[2]); // light diffuse
 		glUniform3f(locAmbient, 0.05f, 0.05f, 0.05f); // light ambient
+		glUniform3f(locCamPos, state.camControl.cameraPos[0], state.camControl.cameraPos[1], state.camControl.cameraPos[2]);
+		//specular light uniforms
+
+		glBindBuffer(GL_UNIFORM_BUFFER, uboLights);
+		glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(PointLight)* lights.size(), lights.data());
+		glBindBuffer(GL_UNIFORM_BUFFER, 0);
+
 		glBindVertexArray( vaoLandingPad );
 		glDrawArraysInstanced( GL_TRIANGLES, 0, landingPadVertsCount, landingPadInstances.GetInstanceCount());
 
@@ -495,10 +571,17 @@ int main() try
 
 		// Spaceship
 		// We need to use the GetProjCameraWorldArray() from the instance group so we can later animate the spaceship
-		std::vector<Mat44f> projectionList2 = cubeTestInstance.GetProjCameraWorldArray(projection, world2camera);
+		std::vector<Mat44f> projectionList2 = shipModelInstance.GetProjCameraWorldArray(projection, world2camera);
 		glUniformMatrix4fv(locProj, (GLsizei) projectionList2.size(), GL_TRUE, projectionList2.data()[0].v );
+		//get ship translation
+		std::vector<std::array<float, 3>> shipTransformList = shipModelInstance.GetTranslationArray();
+		glUniform3fv(locModelTrans, (GLsizei)projectionList2.size(), shipTransformList.data()[0].data());
+		//get normal updates
+		std::vector<Mat33f> shipNormalUpdates = shipModelInstance.GetNormalUpdateArray();
+		glUniformMatrix3fv(locNormalTrans, (GLsizei)shipNormalUpdates.size(), GL_TRUE, shipNormalUpdates.data()[0].v);
+
 		glBindVertexArray( vaoSpaceShip );
-		glDrawArraysInstanced( GL_TRIANGLES, 0, spaceShipVertsCount, cubeTestInstance.GetInstanceCount());
+		glDrawArraysInstanced( GL_TRIANGLES, 0, spaceShipVertsCount, shipModelInstance.GetInstanceCount());
 
 
 		// Cleanup
@@ -544,17 +627,26 @@ namespace
 			return;
 		}
 
-		if (auto* state = static_cast<State_*>(glfwGetWindowUserPointer(aWindow)))
+		auto* state = static_cast<State_*>(glfwGetWindowUserPointer(aWindow));
+
+		if( GLFW_PRESS == aAction )
 		{
-			if( GLFW_PRESS == aAction )
-			{
-				state->pressedKeys[aKey] = true;
-			}
-			else if( aAction == GLFW_RELEASE )
-			{
-				state->pressedKeys[aKey] = false;
-			}
+			state->pressedKeys[aKey] = true;
 		}
+		else if( aAction == GLFW_RELEASE )
+		{
+			state->pressedKeys[aKey] = false;
+		}
+
+		//key actions
+		if (GLFW_KEY_1 == aKey && GLFW_PRESS == aAction)
+			(state->lights)->at(0).lColour.w = (state->lights)->at(0).lColour.w == 1.f ? 0.f : 1.f; //toggle light on/off
+		if (GLFW_KEY_2 == aKey && GLFW_PRESS == aAction)
+			(state->lights)->at(1).lColour.w = (state->lights)->at(1).lColour.w == 1.f ? 0.f : 1.f;
+		if (GLFW_KEY_3 == aKey && GLFW_PRESS == aAction)
+			(state->lights)->at(2).lColour.w = (state->lights)->at(2).lColour.w == 1.f ? 0.f : 1.f;
+		if (GLFW_KEY_4 == aKey && GLFW_PRESS == aAction)
+			state->currentGlobalLight = state->currentGlobalLight == Vec3f{0.f, 0.f, 0.f} ? state->diffuseLight : Vec3f{0.f, 0.f, 0.f};
 	}
 
 
@@ -614,7 +706,7 @@ namespace
 			if(state.pressedKeys[GLFW_KEY_LEFT_SHIFT])
 				state.speedMod = 10;
 			else if(state.pressedKeys[GLFW_KEY_LEFT_CONTROL])
-				state.speedMod = 0.5;
+				state.speedMod = 0.2;
 			else
 				state.speedMod = 1;
 
@@ -655,92 +747,110 @@ namespace
 {
 	ModelObject create_ship() 
 	{
+		ShapeMaterial hullPlating
+		{
+			.mVertexColor = {0.4f, 0.4f, 0.4f},
+			.mSpecular = {0.846f, 0.846f, 0.846f},
+			.mShininess = 50.f
+		};
+
+		ShapeMaterial radarDish
+		{
+			.mVertexColor = {0.722f, 0.451f, 0.20f},
+			.mSpecular = {0.946f, 0.846f, 0.846f},
+			.mShininess = 300.f
+		};
+
 		Vec3f base_colour = { 0.7f, 0.7f, 0.7f };
 		Vec3f red = { 0.8f, 0.1f, 0.1f };
-
-		// Create a transform for a cube
-		/*Transform cubeTransform{
-			.mPosition{5.f, 0.f, 3.f},
-			.mRotation{0.785398f, 0.f, 0.f},
-			.mScale{0.5f, 0.5f, 0.5f}
-		};
-		ModelObject cubeTest = MakeCube({ 0.8f, 0.8f, 0.8f }, cubeTransform);
-
-		// Create a transform for a cylinder
-		Transform cylinderTransform{
-			.mPosition{5.f, 7.f, 3.f},
-			.mRotation{2.f, 0.f, 0.f},
-			.mScale{2.f, 2.f, 2.f}
-		};
-		ModelObject cylinderTest = MakeCylinder(true, 10, { 0.7f, 0.7f, 0.7f }, cylinderTransform);
-		*/
 
 		Transform bodyTransform{
 			.mPosition{1.6f, 0.9f, 1.f},
 			.mRotation{0.f, 0.f, 0.f},
 			.mScale{1.7f, 0.2f, 0.2f}
 		};
-		ModelObject body = MakeCylinder(true, 32, base_colour, bodyTransform);
+		ModelObject body = MakeCylinder(true, 32, bodyTransform, hullPlating);
 
 		Transform leftNacelTransform{
 			.mPosition{2.5f, 1.6f, 0.2f},
 			.mRotation{0.f, 0.f, 0.f},
 			.mScale{2.2f, 0.1f, 0.1f}
 		};
-		ModelObject leftNacel = MakeCylinder(true, 32, base_colour, leftNacelTransform);
+		ModelObject leftNacel = MakeCylinder(true, 32, leftNacelTransform, hullPlating);
 
 		Transform rightNacelTransform{
 			.mPosition{2.5f, 1.6f, 1.8f},
 			.mRotation{0.f, 0.f, 0.f},
 			.mScale{2.2f, 0.1f, 0.1f}
 		};
-		ModelObject rightNacel = MakeCylinder(true, 16, base_colour, rightNacelTransform);
+		ModelObject rightNacel = MakeCylinder(true, 32, rightNacelTransform, hullPlating);
 
 		Transform saucerTransform{
-			.mPosition{1.f, 1.5f, 1.f},
+			.mPosition{1.2f, 1.5f, 1.f},
 			.mRotation{0.f, 0.f, std::numbers::pi_v<float> / 2},
 			.mScale{0.1f, 1.f, 1.f}
 		};
-		ModelObject saucerSection = MakeCylinder(true, 32, base_colour, saucerTransform);
+		ModelObject saucerSection = MakeCylinder(true, 32, saucerTransform, hullPlating);
 
 		Transform leftArmTransform{
 			.mPosition{3.f, 1.2f, 1.4f},
 			.mRotation{0.8f, 0.f, 0.f},
 			.mScale{0.1f, 0.5f, 0.05f}
 		};
-		ModelObject leftArm = MakeCube(base_colour, leftArmTransform);
+		ModelObject leftArm = MakeCube(leftArmTransform, hullPlating);
 
 		Transform rightArmTransform{
 			.mPosition{3.f, 1.2f, 0.6f},
 			.mRotation{-0.8f, 0.f, 0.f},
 			.mScale{0.1f, 0.5f, 0.05f}
 		};
-		ModelObject rightArm = MakeCube(base_colour, rightArmTransform);
+		ModelObject rightArm = MakeCube(rightArmTransform, hullPlating);
 
 		Transform neckTransform{
-			.mPosition{1.6f, 1.2f, 1.f},
-			.mRotation{0.f, 0.f, std::numbers::pi_v<float> * 0.2f},
+			.mPosition{1.8f, 1.2f, 1.f},
+			.mRotation{0.f, 0.f, std::numbers::pi_v<float> *0.2f},
 			.mScale{0.15f, 0.4f, 0.075f}
 		};
-		ModelObject neck = MakeCube(base_colour, neckTransform);
+		ModelObject neck = MakeCube(neckTransform, hullPlating);
 
 		Transform topSaucerTransform{
-			.mPosition{1.f, 1.6f, 1.f},
+			.mPosition{1.2f, 1.6f, 1.f},
 			.mRotation{0.f, 0.f, std::numbers::pi_v<float> / 2},
 			.mScale{0.2f, 0.75f, 0.75f}
 		};
-		
-		ModelObject topSaucer = MakeCone(false, 32, base_colour, topSaucerTransform);
+
+		ModelObject topSaucer = MakeCone(false, 32, topSaucerTransform, hullPlating);
 
 		Transform bottomSaucerTransform{
-			.mPosition{1.f, 1.5f, 1.f},
+			.mPosition{1.2f, 1.5f, 1.f},
 			.mRotation{0.f, 0.f, -std::numbers::pi_v<float> / 2},
 			.mScale{0.2f, 0.5f, 0.5f}
 		};
-		ModelObject bottomSaucer = MakeCone(false, 32, base_colour, bottomSaucerTransform);
+		ModelObject bottomSaucer = MakeCone(false, 32, bottomSaucerTransform, hullPlating);
+
+		Transform rearDishTransform{
+			.mPosition{1.5f, 0.9f, 1.f},
+			.mRotation{0.f, 0.f, 0.f},
+			.mScale{0.1f, 0.19f, 0.19f}
+		};
+		ModelObject rearDish = MakeCone(false, 32, rearDishTransform, radarDish);
+
+		Transform frontDishTransform{
+			.mPosition{1.5f, 0.9f, 1.f},
+			.mRotation{0.f, std::numbers::pi_v<float>, 0.f},
+			.mScale{-0.1f, 0.19f, 0.19f}
+		};
+		ModelObject frontDish = MakeCone(false, 32, frontDishTransform, radarDish);
+
+		Transform radarAntennaTransform{
+			.mPosition{1.5f, 0.9f, 1.f},
+			.mRotation{0.f, 0.f, 0.f},
+			.mScale{0.075f, 0.01f, 0.01f}
+		};
+		ModelObject radarAntenna = MakeCylinder(true, 32, radarAntennaTransform, radarDish);
 
 		// Combine the two model objects
-		ModelObject combined = CombineShapeModelObjects(body, saucerSection, topSaucer, bottomSaucer, leftNacel, rightNacel, neck, leftArm, rightArm);
+		ModelObject combined = CombineShapeModelObjects(body, saucerSection, topSaucer, bottomSaucer, leftNacel, rightNacel, neck, leftArm, rightArm, rearDish, frontDish, radarAntenna);
 
 		return combined;
 	}

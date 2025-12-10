@@ -1,8 +1,8 @@
 #version 430
 
-layout( location = 0 ) out vec3 oColor;
+layout( location = 0 ) out vec4 oColor;
 
-uniform vec3 inColour;
+uniform vec4 inColour;
 
 void main()
 {

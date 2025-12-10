@@ -66,12 +66,12 @@ std::vector<Vec2f>& UIElement::Vertices()
 	return uiVertices;
 };
 
-const Vec3f UIElement::getColour() const
+const Vec4f UIElement::getColour() const
 {
 	return currentColour;
 }
 
-Vec3f UIElement::getColour()
+Vec4f UIElement::getColour()
 {
 	return currentColour;
 }

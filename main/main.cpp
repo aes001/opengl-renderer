@@ -818,6 +818,9 @@ int main() try
 		glUseProgram(progUI.programId());
 		//give projection matrix to uniform
 
+		glEnable(GL_BLEND); //enter blending mode to use transparency
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
 		UI.checkMouseInterractions(state.mousePos);
 		//draw each UI element
 		for (int i = 0; i < UI.getElementCount(); i++) 
@@ -825,13 +828,14 @@ int main() try
 			glBindVertexArray(UI.getElementGPU(i).ArrayId());
 
 			GLint Colour = glGetUniformLocation(progUI.programId(), "inColour");
-			Vec3f element_colour = UI.getElement(i).getColour();
-			glUniform3fv(Colour, 1, &element_colour.x);
+			Vec4f element_colour = UI.getElement(i).getColour();
+			glUniform4fv(Colour, 1, &element_colour.x);
 			glDrawArrays(GL_TRIANGLES, 0, static_cast<GLsizei>(UI.getElement(i).Vertices().size()));
 
 		}
 
-		glEnable (GL_DEPTH_TEST);
+		glDisable(GL_BLEND);
+		glEnable(GL_DEPTH_TEST);
 
 
 		// Cleanup
@@ -1134,7 +1138,7 @@ namespace
 
 		UIElementProperties test_prop
 		{
-			.uiColour = {0.722f, 0.151f, 0.1f},
+			.uiColour = {0.722f, 0.151f, 0.1f, 0.5f},
 			.uiPosition = {0.7f, -0.9},
 			.uiWidth = 0.2f,
 			.uiHeight = 0.2f
@@ -1145,7 +1149,7 @@ namespace
 
 		UIElementProperties test_prop2
 		{
-			.uiColour = {0.22f, 0.151f, 0.9f},
+			.uiColour = {0.22f, 0.151f, 0.9f, 0.5f},
 			.uiPosition = {0.45f, -0.9},
 			.uiWidth = 0.2f,
 			.uiHeight = 0.2f
@@ -1156,7 +1160,7 @@ namespace
 
 		UIElementProperties test_prop3
 		{
-			.uiColour = {1.f, 0.f, 0.f},
+			.uiColour = {1.f, 0.f, 0.f, 0.5f},
 			.uiPosition = {0.5f, 0.5f},
 			.uiWidth = 0.2f,
 			.uiHeight = 0.2f

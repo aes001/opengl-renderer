@@ -59,6 +59,21 @@ namespace
 	constexpr float kMouseSensitivity_ = 0.005f; // radians per pixel
 	constexpr size_t KEY_COUNT_GLFW = 349;
 
+	struct CamCtrl
+	{
+		bool cameraActive{ false };
+		Vec3f cameraPos{ 0.f, 0.f, 0.f };
+		Vec3f cameraDirection{ 0.f, 0.f, 1.f };
+		Vec3f cameraRight{ 1.f, 0.f, 0.f };
+		Vec3f cameraUp{ 0.f, 1.f, 0.f };
+
+		float yaw{ 0.f };
+		float pitch{ 0.f };
+
+		float lastX{ 0.f };
+		float lastY{ 0.f };
+	};
+
 	struct State_
 	{
 		std::vector<PointLight>* lights;
@@ -70,18 +85,18 @@ namespace
 		float speedMod;
 		bool pressedKeys[KEY_COUNT_GLFW] = { false };
 
-		struct CamCtrl_
-		{
-			bool cameraActive;
-			Vec3f cameraPos;
-			Vec3f cameraDirection;
-			Vec3f cameraRight;
-			Vec3f cameraUp;
+		size_t selectedCamera{ 0 };
+		std::vector<CamCtrl*> camControl;
+		ObjectInstanceGroup* spaceShipInstPtr;
+		const Transform spaceShipInitialTransform{
+			.mPosition{ -32.5f, 0.3f, 2.f },
+			.mRotation{ 0.f, 0.f, 0.f },
+			.mScale{ 1.f, 1.f, 1.f }
+		};
+		const Vec3f shipCamLocalOffset{ -6.5f, -3.3f, 0.f };
+		const Vec3f shipCamOriginalPos = Vec3f{ 32.5f, -0.3f, -2.f } + (shipCamLocalOffset);
 
-			float yaw, pitch;
-
-			float lastX, lastY;
-		} camControl;
+		bool isSplitScreen;
 	};
 
 
@@ -92,6 +107,17 @@ namespace
 	void updateCamera(State_& state);
 
 	ModelObject create_ship();
+
+
+	enum eSelectedCamera : size_t
+	{
+		kFreeCam = 0,
+		kGroundCam,
+		kShipCam
+	};
+
+
+	void RenderScene( const CamCtrl& camControl );
 }
 
 int main() try
@@ -152,12 +178,14 @@ int main() try
 	State_ state{};
 
 	// Initial camera set up
-	state.camControl.cameraPos = {0.f, 0.f, -10.f};
-	state.camControl.cameraDirection = {0.f, 0.f, -1.f};
-	//state.camControl.cameraRight = {}
-	//state.camControl.cameraUp;
-	//state.camControl.yaw = -90.f;
-	//state.camControl.pitch = 0.f;
+	CamCtrl freeCam;
+	state.camControl.push_back(&freeCam);
+	freeCam.cameraPos = {0.f, 0.f, -10.f};
+
+	CamCtrl groundCam;
+	state.camControl.push_back(&groundCam);
+	groundCam.cameraPos = { -21.0772552f, -3.f, -1.44215655f };
+
 
 	glfwSetWindowUserPointer( window, &state );
 
@@ -355,13 +383,25 @@ int main() try
 	// Create an instance of the model object
 	// Makes the model object have a position that we can later modify
 
-	Transform spaceShipInitialTransform{
-		.mPosition{ -32.5f, 0.3f, 2.f },
-		.mRotation{ 0.f, 0.f, 0.f },
-		.mScale{ 1.f, 1.f, 1.f }
-	};
 	ObjectInstanceGroup spaceShipInstances( spaceShipModelGPU );
+	state.spaceShipInstPtr = &spaceShipInstances;
+	const Transform& spaceShipInitialTransform{state.spaceShipInitialTransform};
 	spaceShipInstances.CreateInstance( spaceShipInitialTransform );
+
+	// Create and calculate ship cam directions
+	CamCtrl shipCam;
+	shipCam.cameraPos = state.shipCamOriginalPos;
+
+	[&] () {
+		state.camControl.push_back(&shipCam);
+		shipCam.cameraDirection =  normalize(-(spaceShipInstances.GetTransform(0).mPosition) - shipCam.cameraPos);
+
+		shipCam.pitch = asin(shipCam.cameraDirection.y);
+		shipCam.yaw = atan2f(shipCam.cameraDirection.z, shipCam.cameraDirection.x);
+
+		shipCam.cameraRight = normalize(cross({ 0.f, 1.f, 0.f }, shipCam.cameraDirection));
+		shipCam.cameraUp = cross(shipCam.cameraDirection, shipCam.cameraRight);
+	} ();
 
 	GLuint vaoSpaceShip = 0;
 	glGenVertexArrays( 1, &vaoSpaceShip );
@@ -589,22 +629,23 @@ int main() try
 
 
 			// Disappear
+			Vec3f newSpaceShipPosition2  = (spaceShipForward * 9999.f) + newSpaceShipPosition;
 			spaceShipXKF.InsertKeyframe({
-				newSpaceShipPosition.x + 9999.f,
-				0.f,
-				ShapingFunctions::Instant
+				newSpaceShipPosition2.x,
+				1.f,
+				ShapingFunctions::PolynomialEaseOut<6>
 				});
 
 			spaceShipYKF.InsertKeyframe({
-				newSpaceShipPosition.y + 9999.f,
-				0.f,
-				ShapingFunctions::Instant
+				newSpaceShipPosition2.y,
+				1.f,
+				ShapingFunctions::PolynomialEaseOut<6>
 				});
 
 			spaceShipZKF.InsertKeyframe({
-				newSpaceShipPosition.z + 9999.f,
-				0.f,
-				ShapingFunctions::Instant
+				newSpaceShipPosition2.z,
+				1.f,
+				ShapingFunctions::PolynomialEaseOut<6>
 				});
 
 
@@ -652,15 +693,34 @@ int main() try
 		state.dt = std::chrono::duration_cast<Secondsf>(now-last).count();
 		last = now;
 
+
+		// Update space ship animation first before camera
+		Vec3f spaceShipAnimatedPosition{
+			spaceShipAnimatedFloats[0].Update(state.dt),
+			spaceShipAnimatedFloats[1].Update(state.dt),
+			spaceShipAnimatedFloats[2].Update(state.dt)
+		};
+
+		Vec3f spaceShipAnimatedRotation{
+			spaceShipAnimatedFloats[3].Update(state.dt),
+			spaceShipAnimatedFloats[4].Update(state.dt),
+			spaceShipAnimatedFloats[5].Update(state.dt)
+		};
+
+		// Bind animated values to space ship transform
+		Transform& spaceShipTrans = spaceShipInstances.GetTransform(0);
+		spaceShipTrans.mPosition = spaceShipAnimatedPosition;
+		spaceShipTrans.mRotation = spaceShipAnimatedRotation;
+
 		updateCamera(state);
 
 
 		Mat44f model2world = kIdentity44f;
 
-		Mat44f view = MakeLookAt(state.camControl.cameraPos,
-								 state.camControl.cameraDirection,
-								 state.camControl.cameraUp,
-								 state.camControl.cameraRight);
+		Mat44f view = MakeLookAt(state.camControl[state.selectedCamera]->cameraPos,
+								 state.camControl[state.selectedCamera]->cameraDirection,
+								 state.camControl[state.selectedCamera]->cameraUp,
+								 state.camControl[state.selectedCamera]->cameraRight);
 
 		Mat44f world2camera = view;
 		Mat44f projection = make_perspective_projection(
@@ -687,7 +747,10 @@ int main() try
 		glUniform3f(3, 0.05f, 0.05f, 0.05f); // light ambient
 
 		//camera
-		glUniform3f(locCamPosTerrain, state.camControl.cameraPos[0], state.camControl.cameraPos[1], state.camControl.cameraPos[2]);
+		glUniform3f(locCamPosTerrain,
+					state.camControl[state.selectedCamera]->cameraPos[0],
+					state.camControl[state.selectedCamera]->cameraPos[1],
+					state.camControl[state.selectedCamera]->cameraPos[2]);
 
 		//lights
 		glBindBuffer(GL_UNIFORM_BUFFER, uboLights);
@@ -726,19 +789,18 @@ int main() try
 		glUniformMatrix3fv(locNormalTrans, (GLsizei)normalUpdates.size(), GL_TRUE, normalUpdates.data()[0].v);
 
 		glUniform3fv(locLightDir, 1, &lightDir.x);
-		glUniform3f(locDiffuse, state.currentGlobalLight[0], state.currentGlobalLight[1], state.currentGlobalLight[2]); // light diffuse
+		glUniform3f(locDiffuse,
+					state.currentGlobalLight[0],
+					state.currentGlobalLight[1],
+					state.currentGlobalLight[2]); // light diffuse
 		glUniform3f(locAmbient, 0.05f, 0.05f, 0.05f); // light ambient
-		glUniform3f(locCamPos, state.camControl.cameraPos[0], state.camControl.cameraPos[1], state.camControl.cameraPos[2]);
+		glUniform3f(locCamPos,
+					state.camControl[state.selectedCamera]->cameraPos[0],
+					state.camControl[state.selectedCamera]->cameraPos[1],
+					state.camControl[state.selectedCamera]->cameraPos[2]);
+
 		//specular light uniforms
-
-		Vec3f spaceShipAnimatedPosition{
-			spaceShipAnimatedFloats[0].Update(state.dt),
-			spaceShipAnimatedFloats[1].Update(state.dt),
-			spaceShipAnimatedFloats[2].Update(state.dt)
-		};
-
 		Vec4f spaceShipOffset = Vec3ToVec4(spaceShipAnimatedPosition - spaceShipInitialTransform.mPosition);
-
 		for(size_t i = 0; i < lights.size(); i++)
 		{
 			lights[i].lPosition = lightOriginalPositions[i] + spaceShipOffset;
@@ -754,17 +816,6 @@ int main() try
 
 
 		// Spaceship
-		// We need to use the GetProjCameraWorldArray() from the instance group so we can later animate the spaceship
-		Transform& spaceShipTrans = spaceShipInstances.GetTransform(0);
-
-		spaceShipTrans.mPosition = spaceShipAnimatedPosition; // Bind the spaceship position to the animated floats
-
-		spaceShipTrans.mRotation.x = spaceShipAnimatedFloats[3].Update(state.dt);
-		spaceShipTrans.mRotation.y = spaceShipAnimatedFloats[4].Update(state.dt);
-		spaceShipTrans.mRotation.z = spaceShipAnimatedFloats[5].Update(state.dt);
-
-
-
 		std::vector<Mat44f> projectionList2 = spaceShipInstances.GetProjCameraWorldArray(projection, world2camera);
 		glUniformMatrix4fv(locProj, (GLsizei) projectionList2.size(), GL_TRUE, projectionList2.data()[0].v );
 		//get ship translation
@@ -856,6 +907,12 @@ namespace
 				(state->lights)->at(2).lColour.w = (state->lights)->at(2).lColour.w == 1.f ? 0.f : 1.f;
 			if (GLFW_KEY_4 == aKey && GLFW_PRESS == aAction)
 				state->currentGlobalLight = state->currentGlobalLight == Vec3f{0.f, 0.f, 0.f} ? state->diffuseLight : Vec3f{0.f, 0.f, 0.f};
+
+
+			if( GLFW_KEY_C == aKey && aAction == GLFW_PRESS)
+			{
+				state->selectedCamera = (state->selectedCamera + 1) % 3;
+			}
 		}
 	}
 
@@ -864,23 +921,23 @@ namespace
 	{
 		if( auto* state = static_cast<State_*>(glfwGetWindowUserPointer( aWindow )) )
 		{
-			if( state->camControl.cameraActive )
+			if( state->camControl[0]->cameraActive )
 			{
-				auto const dx = float(aX-state->camControl.lastX);
-				auto const dy = float(aY-state->camControl.lastY);
+				auto const dx = float(aX-state->camControl[0]->lastX);
+				auto const dy = float(aY-state->camControl[0]->lastY);
 
-				state->camControl.yaw += dx*kMouseSensitivity_;
+				state->camControl[0]->yaw += dx*kMouseSensitivity_;
 
 
 				constexpr float maxPitch =  std::numbers::pi_v<float>/2.f;
 				constexpr float minPitch = -std::numbers::pi_v<float>/2.f;
-				float tempPitch = state->camControl.pitch + dy*kMouseSensitivity_;
+				float tempPitch = state->camControl[0]->pitch + dy*kMouseSensitivity_;
 
-				state->camControl.pitch = std::clamp(tempPitch, minPitch, maxPitch);
+				state->camControl[0]->pitch = std::clamp(tempPitch, minPitch, maxPitch);
 			}
 
-			state->camControl.lastX = float(aX);
-			state->camControl.lastY = float(aY);
+			state->camControl[0]->lastX = float(aX);
+			state->camControl[0]->lastY = float(aY);
 		}
 	}
 
@@ -890,9 +947,9 @@ namespace
 
 		if ( aButton == GLFW_MOUSE_BUTTON_RIGHT && aAction == GLFW_PRESS )
 		{
-			state->camControl.cameraActive = !state->camControl.cameraActive;
+			state->camControl[0]->cameraActive = !state->camControl[0]->cameraActive;
 
-			if( state->camControl.cameraActive )
+			if( state->camControl[0]->cameraActive )
 				glfwSetInputMode( aWindow, GLFW_CURSOR, GLFW_CURSOR_DISABLED );
 			else
 				glfwSetInputMode( aWindow, GLFW_CURSOR, GLFW_CURSOR_NORMAL );
@@ -902,38 +959,60 @@ namespace
 
 	void updateCamera(State_& state)
 	{
-		State_::CamCtrl_& cam = state.camControl;
+		CamCtrl& cam = *(state.camControl[state.selectedCamera]);
 
-		cam.cameraRight = normalize(cross({ 0.f, 1.f, 0.f }, cam.cameraDirection));
-		cam.cameraUp = cross(cam.cameraDirection, cam.cameraRight);
-
-		cam.cameraDirection = normalize( {float(cos(cam.yaw)) * float(cos(cam.pitch)),
-										  float(sin(cam.pitch)),
-										  float(sin(cam.yaw)) * float(cos(cam.pitch))} );
-
-		if (state.camControl.cameraActive)
+		if( kFreeCam == state.selectedCamera )
 		{
-			if(state.pressedKeys[GLFW_KEY_LEFT_SHIFT])
-				state.speedMod = 10;
-			else if(state.pressedKeys[GLFW_KEY_LEFT_CONTROL])
-				state.speedMod = 0.2;
-			else
-				state.speedMod = 1;
+			cam.cameraRight = normalize(cross({ 0.f, 1.f, 0.f }, cam.cameraDirection));
+			cam.cameraUp = cross(cam.cameraDirection, cam.cameraRight);
 
-			float moveDistance = state.speedMod * kMovementPerSecond_ * state.dt;
+			cam.cameraDirection = normalize( {float(cos(cam.yaw)) * float(cos(cam.pitch)),
+											  float(sin(cam.pitch)),
+											  float(sin(cam.yaw)) * float(cos(cam.pitch))} );
 
-			if (state.pressedKeys[GLFW_KEY_W])
-				state.camControl.cameraPos += state.camControl.cameraDirection * moveDistance;
-			if (state.pressedKeys[GLFW_KEY_S])
-				state.camControl.cameraPos -= state.camControl.cameraDirection * moveDistance;
-			if (state.pressedKeys[GLFW_KEY_A])
-				state.camControl.cameraPos -= normalize(cross(state.camControl.cameraDirection, state.camControl.cameraUp)) * moveDistance;
-			if (state.pressedKeys[GLFW_KEY_D])
-				state.camControl.cameraPos += normalize(cross(state.camControl.cameraDirection, state.camControl.cameraUp)) * moveDistance;
-			if (state.pressedKeys[GLFW_KEY_E])
-				state.camControl.cameraPos -= state.camControl.cameraUp * moveDistance;
-			if (state.pressedKeys[GLFW_KEY_Q])
-				state.camControl.cameraPos += state.camControl.cameraUp * moveDistance;
+			if (cam.cameraActive)
+			{
+				if(state.pressedKeys[GLFW_KEY_LEFT_SHIFT])
+					state.speedMod = 10;
+				else if(state.pressedKeys[GLFW_KEY_LEFT_CONTROL])
+					state.speedMod = 0.2;
+				else
+					state.speedMod = 1;
+
+				float moveDistance = state.speedMod * kMovementPerSecond_ * state.dt;
+
+				if (state.pressedKeys[GLFW_KEY_W])
+					cam.cameraPos += cam.cameraDirection * moveDistance;
+				if (state.pressedKeys[GLFW_KEY_S])
+					cam.cameraPos -= cam.cameraDirection * moveDistance;
+				if (state.pressedKeys[GLFW_KEY_A])
+					cam.cameraPos -= normalize(cross(cam.cameraDirection, cam.cameraUp)) * moveDistance;
+				if (state.pressedKeys[GLFW_KEY_D])
+					cam.cameraPos += normalize(cross(cam.cameraDirection, cam.cameraUp)) * moveDistance;
+				if (state.pressedKeys[GLFW_KEY_E])
+					cam.cameraPos -= cam.cameraUp * moveDistance;
+				if (state.pressedKeys[GLFW_KEY_Q])
+					cam.cameraPos += cam.cameraUp * moveDistance;
+			}
+		}
+		else if( kGroundCam == state.selectedCamera )
+		{
+			cam.cameraDirection =  normalize(-(state.spaceShipInstPtr->GetTransform(0).mPosition) - cam.cameraPos);
+
+			cam.pitch = asin(cam.cameraDirection.y);
+			cam.yaw = atan2f(cam.cameraDirection.z, cam.cameraDirection.x);
+
+			cam.cameraRight = normalize(cross({ 0.f, 1.f, 0.f }, cam.cameraDirection));
+			cam.cameraUp = cross(cam.cameraDirection, cam.cameraRight);
+		}
+		else if( kShipCam == state.selectedCamera )
+		{
+			Transform shipTrans = state.spaceShipInstPtr->GetTransform(0);
+
+			Vec3f spaceShipDiff{ shipTrans.mPosition - state.spaceShipInitialTransform.mPosition };
+
+			cam.cameraPos = (state.shipCamOriginalPos) - spaceShipDiff;
+
 		}
 	}
 
@@ -1065,5 +1144,9 @@ namespace
 		return combined;
 	}
 
+	void RenderScene( const CamCtrl& camControl )
+	{
+
+	}
 
 }

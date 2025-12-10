@@ -1142,16 +1142,16 @@ namespace
 
 		std::vector<UIElement> elements;
 
-		UIElementProperties test_prop
+		UIElementProperties toggleAnimationBtn_prop
 		{
-			.uiColour = {0.722f, 0.151f, 0.1f, 0.5f},
-			.uiPosition = {0.7f, -0.9},
-			.uiWidth = 0.2f,
+			.uiColour = {0.1f, 0.9f, 0.1f, 0.5f},
+			.uiPosition = {-0.1f, -0.9},
+			.uiWidth = 0.15f,
 			.uiHeight = 0.2f,
-			.uiBorderWidth = 0.01f
+			.uiBorderWidth = 0.02f
 		};
 
-		UIElement toggleAnimationBtn = UIElement(test_prop);
+		UIElement toggleAnimationBtn = UIElement(toggleAnimationBtn_prop);
 		toggleAnimationBtn.InsertOnClickCallback([state] ()
 			{
 				for (auto& anim : *(state->animatedFloatsPtr))
@@ -1161,16 +1161,16 @@ namespace
 			});
 		elements.push_back(toggleAnimationBtn);
 
-		UIElementProperties test_prop2
+		UIElementProperties resetAnimationBtn_prop2
 		{
-			.uiColour = {0.22f, 0.151f, 0.9f, 0.5f},
-			.uiPosition = {0.45f, -0.9},
-			.uiWidth = 0.2f,
+			.uiColour = {0.9f, 0.1f, 0.1f, 0.5f},
+			.uiPosition = {0.1f, -0.9},
+			.uiWidth = 0.15f,
 			.uiHeight = 0.2f,
-			.uiBorderWidth = 0.05f
+			.uiBorderWidth = 0.02f
 		};
 
-		UIElement resetAnimationBtn = UIElement(test_prop2);
+		UIElement resetAnimationBtn = UIElement(resetAnimationBtn_prop2);
 		resetAnimationBtn.InsertOnClickCallback([state]()
 			{
 				for (auto& anim : *(state->animatedFloatsPtr))
@@ -1179,18 +1179,6 @@ namespace
 				}
 			});
 		elements.push_back(resetAnimationBtn);
-
-		UIElementProperties test_prop3
-		{
-			.uiColour = {1.f, 0.f, 0.f, 0.5f},
-			.uiPosition = {0.5f, 0.5f},
-			.uiWidth = 0.2f,
-			.uiHeight = 0.2f,
-			.uiBorderWidth = 0.f
-		};
-
-		UIElement test_element3(test_prop3);
-		elements.push_back(test_element3);
 
 		return UIGroup(elements);
 	}

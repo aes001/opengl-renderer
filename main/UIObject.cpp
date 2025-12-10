@@ -85,8 +85,14 @@ void UIElement::checkUpdates(Vec2f mousePos, int mouseStatus)
 		if (mouseStatus == GLFW_PRESS) 
 		{
 			currentColour = elementProperties.uiColour / 4.f;
-			TriggerCallbacks();
+
+			if (lastUpdateState != mouseStatus) 
+			{
+				TriggerCallbacks();
+			}
+			
 		}
+		lastUpdateState = mouseStatus;
 
 	}
 	else 

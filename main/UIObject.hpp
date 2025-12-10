@@ -51,6 +51,7 @@ private:
 	Vec4f currentColour;
 	UIElementProperties elementProperties;
 	float LB, RB, BB, UB; //Left Bound, Right Bound, Bottom Bount, Upper Bound
+	int lastUpdateState;
 
 };
 

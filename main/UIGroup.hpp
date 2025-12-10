@@ -8,7 +8,7 @@ class UIGroup
 public:
 	explicit UIGroup(std::vector<UIElement> UIelements);
 
-	void checkMouseInterractions(Vec2f mousePos);
+	void checkMouseInterractions(Vec2f mousePos, int mouseStatus);
 
 	const UIElement& getElement(int index) const;
 	UIElement& getElement(int index);

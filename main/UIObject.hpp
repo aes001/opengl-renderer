@@ -3,6 +3,7 @@
 
 // Includes
 #include "glad/glad.h"
+#include <GLFW/glfw3.h>
 #include "../vmlib/vec2.hpp"
 #include "../vmlib/vec3.hpp"
 #include "../vmlib/vec4.hpp"
@@ -23,7 +24,7 @@ class UIElement
 public:
 	explicit UIElement(UIElementProperties properties);
 
-	void checkUpdates(Vec2f mousePos);
+	void checkUpdates(Vec2f mousePos, int mouseStatus);
 
 	const std::vector<Vec2f>& Vertices() const;
 	std::vector<Vec2f>& Vertices();

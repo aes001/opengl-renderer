@@ -73,7 +73,7 @@ void UIElement::CalculateBounds()
 
 }
 
-void UIElement::checkUpdates(Vec2f mousePos) 
+void UIElement::checkUpdates(Vec2f mousePos, int mouseStatus) 
 {
 
 	//check if within bounds of element
@@ -81,6 +81,12 @@ void UIElement::checkUpdates(Vec2f mousePos)
 		BB <= mousePos.y && mousePos.y <= UB)
 	{
 		currentColour = elementProperties.uiColour / 2.f;
+
+		if (mouseStatus == GLFW_PRESS) 
+		{
+			currentColour = elementProperties.uiColour / 4.f;
+		}
+
 	}
 	else 
 	{

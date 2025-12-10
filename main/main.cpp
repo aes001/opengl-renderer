@@ -70,7 +70,9 @@ namespace
 		float dt;
 		float speedMod;
 		bool pressedKeys[KEY_COUNT_GLFW] = { false };
+
 		Vec2f mousePos;
+		int mouseStatus;
 
 		struct CamCtrl_
 		{
@@ -633,8 +635,6 @@ int main() try
 	state.animatedFloatsPtr = &spaceShipAnimatedFloats;
 
 	//UI initialisation
-	Mat44f orthProj = MakeOrthoProj(0, iwidth, 0, iheight, 0, 600);
-
 	UIGroup UI = createUI();
 
 	OGL_CHECKPOINT_ALWAYS();
@@ -821,7 +821,7 @@ int main() try
 		glEnable(GL_BLEND); //enter blending mode to use transparency
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-		UI.checkMouseInterractions(state.mousePos);
+		UI.checkMouseInterractions(state.mousePos, state.mouseStatus);
 		//draw each UI element
 		for (int i = 0; i < UI.getElementCount(); i++) 
 		{
@@ -963,6 +963,10 @@ namespace
 				glfwSetInputMode( aWindow, GLFW_CURSOR, GLFW_CURSOR_DISABLED );
 			else
 				glfwSetInputMode( aWindow, GLFW_CURSOR, GLFW_CURSOR_NORMAL );
+		}
+		if (aButton == GLFW_MOUSE_BUTTON_LEFT) 
+		{
+			state->mouseStatus = aAction;
 		}
 	}
 

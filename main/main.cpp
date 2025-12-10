@@ -80,14 +80,26 @@ namespace
 		std::vector<ShaderProgram*> progs;
 		const Vec3f diffuseLight = { 0.729f, 0.808f, 0.92f }; //sky: 0.529f, 0.808f, 0.92f, warm: 0.9f, 0.9f, 0.6f
 		Vec3f currentGlobalLight;
+
 		std::vector<KeyFramedFloat>* animatedFloatsPtr;
 		float dt;
 		float speedMod;
 		bool pressedKeys[KEY_COUNT_GLFW] = { false };
+		float fbwidth{ 1280 };
+		float fbheight{ 720 };
 
-		size_t selectedCamera{ 0 };
+		size_t selectedCamera_topScreen{ 0 };
+		size_t selectedCamera_bottomScreen{ 0 };
 		std::vector<CamCtrl*> camControl;
+
 		ObjectInstanceGroup* spaceShipInstPtr;
+		ObjectInstanceGroup* landingPadInstPtr;
+		ModelObjectGPU* terrainGPU;
+
+		GLsizei numTerrainVerts;
+		GLsizei numSpaceShipVerts;
+		GLsizei numLandingPadVerts;
+
 		const Transform spaceShipInitialTransform{
 			.mPosition{ -32.5f, 0.3f, 2.f },
 			.mRotation{ 0.f, 0.f, 0.f },
@@ -97,6 +109,14 @@ namespace
 		const Vec3f shipCamOriginalPos = Vec3f{ 32.5f, -0.3f, -2.f } + (shipCamLocalOffset);
 
 		bool isSplitScreen;
+
+		GLuint terrainVAO{0};
+		GLuint shipVAO{0};
+		GLuint landingPadVAO{0};
+
+		GLuint lightsUBO{0};
+
+		std::vector<Vec4f>* lightOriginalPositions;
 	};
 
 
@@ -116,8 +136,7 @@ namespace
 		kShipCam
 	};
 
-
-	void RenderScene( const CamCtrl& camControl );
+	void RenderScene( const CamCtrl& aCamCtrl, GLFWwindow* aWindow );
 }
 
 int main() try
@@ -253,16 +272,16 @@ int main() try
 
 	uint32_t terrainLoadFlags = kLoadTextureCoords | kLoadVertexColour;
 	ModelObject terrain( "assets/cw2/parlahti.obj", terrainLoadFlags );
-	std::vector<Vec3f>& terrainVerts = terrain.Vertices();
-	const GLsizei numTerrainVerts = static_cast<GLsizei>( terrainVerts.size() );
+	state.numTerrainVerts = static_cast<GLsizei>( terrain.Vertices().size() );
 
 	// Load model into VBOs
 	ModelObjectGPU terrainGPU( terrain );
+	state.terrainGPU = &terrainGPU;
 
 	// Create VAO
-	GLuint vao = 0;
-	glGenVertexArrays( 1, &vao );
-	glBindVertexArray( vao );
+	//GLuint vao = 0;
+	glGenVertexArrays( 1, &state.terrainVAO );
+	glBindVertexArray( state.terrainVAO );
 	//positions
 	glBindBuffer( GL_ARRAY_BUFFER, terrainGPU.BufferId(kVboPositions) );
 	glVertexAttribPointer(
@@ -312,16 +331,17 @@ int main() try
 								 | kLoadVertexShininess;
 	ModelObject landingPad( "assets/cw2/landingpad.obj", landingPadLoadFlags );
 	ModelObjectGPU landingPadGPU( landingPad );
-	const GLsizei landingPadVertsCount = static_cast<GLsizei>( landingPad.Vertices().size() );
+	state.numLandingPadVerts = static_cast<GLsizei>( landingPad.Vertices().size() );
 
 	ObjectInstanceGroup landingPadInstances( landingPadGPU );
 	landingPadInstances.CreateInstance( Transform( { .mPosition{-19.f,  -0.97f, 10.f} } ) );
 	landingPadInstances.CreateInstance( Transform( { .mPosition{-32.5f, -0.97f, 2.f } } ) ); //og -34.7f, -0.97f, 1.f
+	state.landingPadInstPtr = &landingPadInstances;
 
 
-	GLuint vaoLandingPad = 0;
-	glGenVertexArrays( 1, &vaoLandingPad );
-	glBindVertexArray( vaoLandingPad );
+	//GLuint vaoLandingPad = 0;
+	glGenVertexArrays( 1, &state.landingPadVAO );
+	glBindVertexArray( state.landingPadVAO );
 	//positions
 	glBindBuffer( GL_ARRAY_BUFFER, landingPadGPU.BufferId(kVboPositions) );
 	glVertexAttribPointer(
@@ -375,7 +395,7 @@ int main() try
 	// Combine the two model objects
 	ModelObject spaceShipModel = create_ship();
 	spaceShipModel.OriginToGeometry();
-	const GLsizei spaceShipVertsCount = spaceShipModel.Vertices().size();
+	state.numSpaceShipVerts = spaceShipModel.Vertices().size();
 
 	// Creaete the vbos for the model object
 	ModelObjectGPU spaceShipModelGPU( spaceShipModel );
@@ -403,9 +423,9 @@ int main() try
 		shipCam.cameraUp = cross(shipCam.cameraDirection, shipCam.cameraRight);
 	} ();
 
-	GLuint vaoSpaceShip = 0;
-	glGenVertexArrays( 1, &vaoSpaceShip );
-	glBindVertexArray( vaoSpaceShip );
+	//GLuint vaoSpaceShip = 0;
+	glGenVertexArrays( 1, &state.shipVAO );
+	glBindVertexArray( state.shipVAO );
 	//positions
 	glBindBuffer( GL_ARRAY_BUFFER, spaceShipModelGPU.BufferId(kVboPositions) );
 	glVertexAttribPointer(
@@ -464,6 +484,8 @@ int main() try
 	Vec4f l2InitialTransform = { -32.55f, 0.6f, 2.f, 0.f};
 	Vec4f l3InitialTransform = { -31.75f, -0.5f, 2.f, 0.f};
 	std::vector<Vec4f> lightOriginalPositions = {l1InitialTransform, l2InitialTransform, l3InitialTransform};
+	state.lightOriginalPositions = &lightOriginalPositions;
+
 	//lights: position, colour, intensity
 	PointLight l1 = { l1InitialTransform, { 0.8f, 0.77f, 0.72f, 1.f}, {0.15f, 0.f, 0.f} }; //under saucer light
 	PointLight l2 = { l2InitialTransform, { 0.988f, 0.1f, 0.1f, 1.f}, {0.1f, 0.f, 0.f} }; //naecell light
@@ -474,21 +496,21 @@ int main() try
 	lights[2] = l3;
 	state.lights = &lights;
 
-	GLuint uboLights;
-	glGenBuffers(1, &uboLights);
-	glBindBuffer(GL_UNIFORM_BUFFER, uboLights);
+	//GLuint uboLights;
+	glGenBuffers(1, &state.lightsUBO );
+	glBindBuffer(GL_UNIFORM_BUFFER, state.lightsUBO);
 	glBufferData(GL_UNIFORM_BUFFER, sizeof(PointLight)* N_LIGHTS, nullptr, GL_DYNAMIC_DRAW);
 	glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
 	//bind to material shader
 	GLuint blockIndex = glGetUniformBlockIndex(prog2.programId(), "LightBlock");
 	glUniformBlockBinding(prog2.programId(), blockIndex, 0);
-	glBindBufferBase(GL_UNIFORM_BUFFER, 0, uboLights);
+	glBindBufferBase(GL_UNIFORM_BUFFER, 0, state.lightsUBO);
 
 	//bind to default shader
 	GLuint blockIndexdefault = glGetUniformBlockIndex(prog.programId(), "LightBlock");
 	glUniformBlockBinding(prog.programId(), blockIndexdefault, 0);
-	glBindBufferBase(GL_UNIFORM_BUFFER, 0, uboLights);
+	glBindBufferBase(GL_UNIFORM_BUFFER, 0, state.lightsUBO);
 
 	// Reset State
 	glBindVertexArray( 0 );
@@ -683,16 +705,18 @@ int main() try
 					glfwGetFramebufferSize( window, &nwidth, &nheight );
 				} while( 0 == nwidth || 0 == nheight );
 			}
-
-			glViewport( 0, 0, nwidth, nheight );
 		}
+
+		state.fbheight = fbheight;
+		state.fbwidth = fbwidth;
+
+		glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
 
 		// Update state
 
 		auto const now = Clock::now();
 		state.dt = std::chrono::duration_cast<Secondsf>(now-last).count();
 		last = now;
-
 
 		// Update space ship animation first before camera
 		Vec3f spaceShipAnimatedPosition{
@@ -715,118 +739,27 @@ int main() try
 		updateCamera(state);
 
 
-		Mat44f model2world = kIdentity44f;
-
-		Mat44f view = MakeLookAt(state.camControl[state.selectedCamera]->cameraPos,
-								 state.camControl[state.selectedCamera]->cameraDirection,
-								 state.camControl[state.selectedCamera]->cameraUp,
-								 state.camControl[state.selectedCamera]->cameraRight);
-
-		Mat44f world2camera = view;
-		Mat44f projection = make_perspective_projection(
-			60.f * std::numbers::pi_v<float> / 180.f,
-			fbwidth/float(fbheight),
-			0.1f, 200.0f
-		);
-
-		Mat44f projCameraWorld = projection * world2camera * model2world;
-
-
 		// Draw scene
 		OGL_CHECKPOINT_DEBUG();
 
-		// Rendering the terrain
-		glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
-		glUseProgram( prog.programId() );
-		GLint locCamPosTerrain = glGetUniformLocation(prog.programId(), "uCamPosition");
-		glUniformMatrix4fv(0, 1, GL_TRUE, projCameraWorld.v);
-
-		Vec3f lightDir = normalize(Vec3f{ -1.f, 1.f, 0.5f }); // light direction
-		glUniform3fv(1, 1, &lightDir.x);
-		glUniform3f(2, state.currentGlobalLight[0], state.currentGlobalLight[1], state.currentGlobalLight[2] ); // light diffuse: 0.9f, 0.9f, 0.6f
-		glUniform3f(3, 0.05f, 0.05f, 0.05f); // light ambient
-
-		//camera
-		glUniform3f(locCamPosTerrain,
-					state.camControl[state.selectedCamera]->cameraPos[0],
-					state.camControl[state.selectedCamera]->cameraPos[1],
-					state.camControl[state.selectedCamera]->cameraPos[2]);
-
-		//lights
-		glBindBuffer(GL_UNIFORM_BUFFER, uboLights);
-		glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(PointLight) * lights.size(), lights.data());
-		glBindBuffer(GL_UNIFORM_BUFFER, 0);
-
-		//action
-		glBindVertexArray( vao );
-		glActiveTexture( GL_TEXTURE0 );
-		glBindTexture( GL_TEXTURE_2D, terrainGPU.BufferId(kDiffuseTexture) );
-		glDrawArraysInstanced( GL_TRIANGLES, 0, numTerrainVerts, 1);
-
-		glBindTexture( GL_TEXTURE_2D, 0 );
-
-
-
-		// Render the landing pad
-		glUseProgram( prog2.programId() );
-
-		GLint locProj     = glGetUniformLocation( prog2.programId(), "uProjCameraWorld" );
-		GLint locModelTrans = glGetUniformLocation(prog2.programId(), "uModelTransform");
-		GLint locNormalTrans = glGetUniformLocation(prog2.programId(), "uNormalTransform");
-		GLint locLightDir = glGetUniformLocation (prog2.programId(), "uLightDir" );
-		GLint locDiffuse  = glGetUniformLocation( prog2.programId(), "uLightDiffuse" );
-		GLint locAmbient  = glGetUniformLocation( prog2.programId(), "uSceneAmbient" );
-
-		GLint locCamPos = glGetUniformLocation(prog2.programId(), "uCamPosition");
-		//get camera projections
-		std::vector<Mat44f> projectionList = landingPadInstances.GetProjCameraWorldArray(projection, world2camera);
-		glUniformMatrix4fv(locProj, (GLsizei)projectionList.size(), GL_TRUE, projectionList.data()[0].v);
-		//get translations
-		std::vector<std::array<float, 3>> transformList = landingPadInstances.GetTranslationArray();
-		glUniform3fv(locModelTrans, (GLsizei) projectionList.size(), transformList.data()[0].data());
-		//get normal updates
-		std::vector<Mat33f> normalUpdates = landingPadInstances.GetNormalUpdateArray();
-		glUniformMatrix3fv(locNormalTrans, (GLsizei)normalUpdates.size(), GL_TRUE, normalUpdates.data()[0].v);
-
-		glUniform3fv(locLightDir, 1, &lightDir.x);
-		glUniform3f(locDiffuse,
-					state.currentGlobalLight[0],
-					state.currentGlobalLight[1],
-					state.currentGlobalLight[2]); // light diffuse
-		glUniform3f(locAmbient, 0.05f, 0.05f, 0.05f); // light ambient
-		glUniform3f(locCamPos,
-					state.camControl[state.selectedCamera]->cameraPos[0],
-					state.camControl[state.selectedCamera]->cameraPos[1],
-					state.camControl[state.selectedCamera]->cameraPos[2]);
-
-		//specular light uniforms
-		Vec4f spaceShipOffset = Vec3ToVec4(spaceShipAnimatedPosition - spaceShipInitialTransform.mPosition);
-		for(size_t i = 0; i < lights.size(); i++)
+		// actual rendering here
+		if (!state.isSplitScreen)
 		{
-			lights[i].lPosition = lightOriginalPositions[i] + spaceShipOffset;
+			glViewport( 0, 0, fbwidth, fbheight );
+			RenderScene( *(state.camControl[state.selectedCamera_topScreen]), window );
+		}
+		else
+		{
+			// Render top screen
+			glViewport( 0, fbheight/2, int(fbwidth), int(fbheight/2) );
+			RenderScene( *(state.camControl[state.selectedCamera_topScreen]), window );
+
+			// Render bottom screen
+			glViewport( 0, 0, int(fbwidth), int(fbheight/2) );
+			RenderScene( *(state.camControl[state.selectedCamera_bottomScreen]), window );
 		}
 
-		glBindBuffer(GL_UNIFORM_BUFFER, uboLights);
-		glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(PointLight)* lights.size(), lights.data());
-		glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
-		glBindVertexArray( vaoLandingPad );
-		glDrawArraysInstanced( GL_TRIANGLES, 0, landingPadVertsCount, landingPadInstances.GetInstanceCount());
-
-
-
-		// Spaceship
-		std::vector<Mat44f> projectionList2 = spaceShipInstances.GetProjCameraWorldArray(projection, world2camera);
-		glUniformMatrix4fv(locProj, (GLsizei) projectionList2.size(), GL_TRUE, projectionList2.data()[0].v );
-		//get ship translation
-		std::vector<std::array<float, 3>> shipTransformList = spaceShipInstances.GetTranslationArray();
-		glUniform3fv(locModelTrans, (GLsizei)projectionList2.size(), shipTransformList.data()[0].data());
-		//get normal updates
-		std::vector<Mat33f> shipNormalUpdates = spaceShipInstances.GetNormalUpdateArray();
-		glUniformMatrix3fv(locNormalTrans, (GLsizei)shipNormalUpdates.size(), GL_TRUE, shipNormalUpdates.data()[0].v);
-
-		glBindVertexArray( vaoSpaceShip );
-		glDrawArraysInstanced( GL_TRIANGLES, 0, spaceShipVertsCount, spaceShipInstances.GetInstanceCount());
 
 
 		// Cleanup
@@ -863,7 +796,7 @@ namespace
 		std::print( stderr, "GLFW error: {} ({})\n", aErrDesc, aErrNum );
 	}
 
-	void glfw_callback_key_( GLFWwindow* aWindow, int aKey, int, int aAction, int )
+	void glfw_callback_key_( GLFWwindow* aWindow, int aKey, int, int aAction, int mod )
 	{
 		if( GLFW_KEY_ESCAPE == aKey && GLFW_PRESS == aAction )
 		{
@@ -909,9 +842,23 @@ namespace
 				state->currentGlobalLight = state->currentGlobalLight == Vec3f{0.f, 0.f, 0.f} ? state->diffuseLight : Vec3f{0.f, 0.f, 0.f};
 
 
-			if( GLFW_KEY_C == aKey && aAction == GLFW_PRESS)
+			if( GLFW_KEY_C == aKey && aAction == GLFW_PRESS )
 			{
-				state->selectedCamera = (state->selectedCamera + 1) % 3;
+				if (GLFW_MOD_SHIFT & mod)
+				{
+					state->selectedCamera_bottomScreen = (state->selectedCamera_bottomScreen + 1) % 3;
+				}
+				else
+				{
+					state->selectedCamera_topScreen = (state->selectedCamera_topScreen + 1) % 3;
+				}
+
+
+			}
+
+			if( GLFW_KEY_V == aKey && aAction == GLFW_PRESS )
+			{
+				state->isSplitScreen = !state->isSplitScreen;
 			}
 		}
 	}
@@ -921,23 +868,26 @@ namespace
 	{
 		if( auto* state = static_cast<State_*>(glfwGetWindowUserPointer( aWindow )) )
 		{
-			if( state->camControl[0]->cameraActive )
+			const bool freeCamSelected = state->selectedCamera_topScreen == kFreeCam ||
+										(state->selectedCamera_bottomScreen == kFreeCam && state->isSplitScreen);
+
+			if( state->camControl[kFreeCam]->cameraActive && freeCamSelected )
 			{
 				auto const dx = float(aX-state->camControl[0]->lastX);
 				auto const dy = float(aY-state->camControl[0]->lastY);
 
-				state->camControl[0]->yaw += dx*kMouseSensitivity_;
+				state->camControl[kFreeCam]->yaw += dx*kMouseSensitivity_;
 
 
 				constexpr float maxPitch =  std::numbers::pi_v<float>/2.f;
 				constexpr float minPitch = -std::numbers::pi_v<float>/2.f;
 				float tempPitch = state->camControl[0]->pitch + dy*kMouseSensitivity_;
 
-				state->camControl[0]->pitch = std::clamp(tempPitch, minPitch, maxPitch);
+				state->camControl[kFreeCam]->pitch = std::clamp(tempPitch, minPitch, maxPitch);
 			}
 
-			state->camControl[0]->lastX = float(aX);
-			state->camControl[0]->lastY = float(aY);
+			state->camControl[kFreeCam]->lastX = float(aX);
+			state->camControl[kFreeCam]->lastY = float(aY);
 		}
 	}
 
@@ -959,10 +909,20 @@ namespace
 
 	void updateCamera(State_& state)
 	{
-		CamCtrl& cam = *(state.camControl[state.selectedCamera]);
+		const bool freeCamSelected = state.selectedCamera_topScreen == kFreeCam ||
+									(state.selectedCamera_bottomScreen == kFreeCam && state.isSplitScreen);
 
-		if( kFreeCam == state.selectedCamera )
+		const bool groundCamSelected = state.selectedCamera_topScreen == kGroundCam ||
+									  (state.selectedCamera_bottomScreen == kGroundCam && state.isSplitScreen);
+
+		const bool shipCamSelected = state.selectedCamera_topScreen == kShipCam ||
+									(state.selectedCamera_bottomScreen == kShipCam && state.isSplitScreen);
+
+
+		if( freeCamSelected )
 		{
+			CamCtrl& cam = *(state.camControl[kFreeCam]);
+
 			cam.cameraRight = normalize(cross({ 0.f, 1.f, 0.f }, cam.cameraDirection));
 			cam.cameraUp = cross(cam.cameraDirection, cam.cameraRight);
 
@@ -995,8 +955,12 @@ namespace
 					cam.cameraPos += cam.cameraUp * moveDistance;
 			}
 		}
-		else if( kGroundCam == state.selectedCamera )
+
+
+		if( groundCamSelected )
 		{
+			CamCtrl& cam = *(state.camControl[kGroundCam]);
+
 			cam.cameraDirection =  normalize(-(state.spaceShipInstPtr->GetTransform(0).mPosition) - cam.cameraPos);
 
 			cam.pitch = asin(cam.cameraDirection.y);
@@ -1005,17 +969,19 @@ namespace
 			cam.cameraRight = normalize(cross({ 0.f, 1.f, 0.f }, cam.cameraDirection));
 			cam.cameraUp = cross(cam.cameraDirection, cam.cameraRight);
 		}
-		else if( kShipCam == state.selectedCamera )
+
+
+		if( shipCamSelected )
 		{
+			CamCtrl& cam = *(state.camControl[kShipCam]);
+
 			Transform shipTrans = state.spaceShipInstPtr->GetTransform(0);
 
 			Vec3f spaceShipDiff{ shipTrans.mPosition - state.spaceShipInitialTransform.mPosition };
 
 			cam.cameraPos = (state.shipCamOriginalPos) - spaceShipDiff;
-
 		}
 	}
-
 }
 
 namespace
@@ -1144,9 +1110,134 @@ namespace
 		return combined;
 	}
 
-	void RenderScene( const CamCtrl& camControl )
+	void RenderScene( const CamCtrl& aCamCtrl, GLFWwindow* aWindow )
 	{
+		auto& state = *(static_cast<State_*>(glfwGetWindowUserPointer( aWindow )));
 
+
+		Mat44f projection;
+
+		if( !state.isSplitScreen )
+		{
+			projection = make_perspective_projection(
+				60.f * std::numbers::pi_v<float> / 180.f,
+				state.fbwidth/state.fbheight,
+				0.1f, 200.0f
+			);
+		}
+		else
+		{
+			projection = make_perspective_projection(
+				60.f * std::numbers::pi_v<float> / 180.f,
+				state.fbwidth/(state.fbheight / 2),
+				0.1f, 200.0f
+			);
+		}
+
+
+		Mat44f world2Camera = MakeLookAt(aCamCtrl.cameraPos,
+										 aCamCtrl.cameraDirection,
+										 aCamCtrl.cameraUp,
+										 aCamCtrl.cameraRight);
+
+
+		auto& prog = *(state.progs[0]);
+		glUseProgram( prog.programId() );
+		GLint locCamPosTerrain = glGetUniformLocation(prog.programId(), "uCamPosition");
+		Mat44f terrainProjectCamWorld = projection * world2Camera * kIdentity44f;
+		glUniformMatrix4fv(0, 1, GL_TRUE, terrainProjectCamWorld.v);
+
+		Vec3f lightDir = normalize(Vec3f{ -1.f, 1.f, 0.5f }); // light direction
+		glUniform3fv(1, 1, &lightDir.x);
+		glUniform3f(2, state.currentGlobalLight[0], state.currentGlobalLight[1], state.currentGlobalLight[2] ); // light diffuse: 0.9f, 0.9f, 0.6f
+		glUniform3f(3, 0.05f, 0.05f, 0.05f); // light ambient
+
+		//camera
+		glUniform3f(locCamPosTerrain,
+					state.camControl[state.selectedCamera_topScreen]->cameraPos[0],
+					state.camControl[state.selectedCamera_topScreen]->cameraPos[1],
+					state.camControl[state.selectedCamera_topScreen]->cameraPos[2]);
+
+		//lights
+		GLuint& uboLights = state.lightsUBO;
+		std::vector<PointLight>& lights = *(state.lights);
+		glBindBuffer(GL_UNIFORM_BUFFER, uboLights);
+		glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(PointLight) * lights.size(), lights.data());
+		glBindBuffer(GL_UNIFORM_BUFFER, 0);
+
+		//action
+		glBindVertexArray( state.terrainVAO );
+		glActiveTexture( GL_TEXTURE0 );
+		glBindTexture( GL_TEXTURE_2D, state.terrainGPU->BufferId(kDiffuseTexture) );
+		glDrawArraysInstanced( GL_TRIANGLES, 0, state.numTerrainVerts, 1);
+
+		glBindTexture( GL_TEXTURE_2D, 0 );
+
+
+
+		// Render the landing pad
+		auto& prog2 = *state.progs[1];
+		auto& landingPadInstances = *state.landingPadInstPtr;
+		glUseProgram( prog2.programId() );
+
+		GLint locProj        = glGetUniformLocation( prog2.programId(), "uProjCameraWorld" );
+		GLint locModelTrans  = glGetUniformLocation( prog2.programId(), "uModelTransform");
+		GLint locNormalTrans = glGetUniformLocation( prog2.programId(), "uNormalTransform");
+		GLint locLightDir    = glGetUniformLocation( prog2.programId(), "uLightDir" );
+		GLint locDiffuse     = glGetUniformLocation( prog2.programId(), "uLightDiffuse" );
+		GLint locAmbient     = glGetUniformLocation( prog2.programId(), "uSceneAmbient" );
+
+		GLint locCamPos = glGetUniformLocation(prog2.programId(), "uCamPosition");
+		//get camera projections
+		std::vector<Mat44f> projectionList = landingPadInstances.GetProjCameraWorldArray(projection, world2Camera);
+		glUniformMatrix4fv(locProj, (GLsizei)projectionList.size(), GL_TRUE, projectionList.data()[0].v);
+		//get translations
+		std::vector<std::array<float, 3>> transformList = landingPadInstances.GetTranslationArray();
+		glUniform3fv(locModelTrans, (GLsizei) projectionList.size(), transformList.data()[0].data());
+		//get normal updates
+		std::vector<Mat33f> normalUpdates = landingPadInstances.GetNormalUpdateArray();
+		glUniformMatrix3fv(locNormalTrans, (GLsizei)normalUpdates.size(), GL_TRUE, normalUpdates.data()[0].v);
+
+		glUniform3fv(locLightDir, 1, &lightDir.x);
+		glUniform3f(locDiffuse,
+			state.currentGlobalLight[0],
+			state.currentGlobalLight[1],
+			state.currentGlobalLight[2]); // light diffuse
+		glUniform3f(locAmbient, 0.05f, 0.05f, 0.05f); // light ambient
+		glUniform3f(locCamPos,
+					state.camControl[state.selectedCamera_topScreen]->cameraPos[0],
+					state.camControl[state.selectedCamera_topScreen]->cameraPos[1],
+					state.camControl[state.selectedCamera_topScreen]->cameraPos[2]);
+
+		//specular light uniforms
+		Vec3f spaceShipAnimatedPosition = state.spaceShipInstPtr->GetTransform(0).mPosition;
+		Vec4f spaceShipOffset = Vec3ToVec4(spaceShipAnimatedPosition - state.spaceShipInitialTransform.mPosition);
+		for(size_t i = 0; i < lights.size(); i++)
+		{
+			lights[i].lPosition = state.lightOriginalPositions->at(i) + spaceShipOffset;
+		}
+
+		glBindBuffer(GL_UNIFORM_BUFFER, uboLights);
+		glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(PointLight)* lights.size(), lights.data());
+		glBindBuffer(GL_UNIFORM_BUFFER, 0);
+
+		glBindVertexArray( state.landingPadVAO );
+		glDrawArraysInstanced( GL_TRIANGLES, 0, state.numLandingPadVerts, landingPadInstances.GetInstanceCount());
+
+
+
+		// Spaceship
+		std::vector<Mat44f> projectionList2 = state.spaceShipInstPtr->GetProjCameraWorldArray(projection, world2Camera);
+		glUniformMatrix4fv(locProj, (GLsizei) projectionList2.size(), GL_TRUE, projectionList2.data()[0].v );
+		//get ship translation
+		std::vector<std::array<float, 3>> shipTransformList = state.spaceShipInstPtr->GetTranslationArray();
+		glUniform3fv(locModelTrans, (GLsizei)projectionList2.size(), shipTransformList.data()[0].data());
+		//get normal updates
+		std::vector<Mat33f> shipNormalUpdates = state.spaceShipInstPtr->GetNormalUpdateArray();
+		glUniformMatrix3fv(locNormalTrans, (GLsizei)shipNormalUpdates.size(), GL_TRUE, shipNormalUpdates.data()[0].v);
+
+		glBindVertexArray( state.shipVAO );
+		glDrawArraysInstanced( GL_TRIANGLES, 0, state.numSpaceShipVerts, state.spaceShipInstPtr->GetInstanceCount());
 	}
 
 }

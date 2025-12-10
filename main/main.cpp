@@ -35,6 +35,7 @@ extern "C"
 #include "GeometricHelpers.hpp"
 #include "Light.hpp"
 #include "UIObject.hpp"
+#include "UIGroup.hpp"
 
 
 namespace
@@ -93,6 +94,7 @@ namespace
 	void updateCamera(State_& state);
 
 	ModelObject create_ship();
+	UIGroup createUI();
 }
 
 int main() try
@@ -632,41 +634,7 @@ int main() try
 	//UI initialisation
 	Mat44f orthProj = MakeOrthoProj(0, iwidth, 0, iheight, 0, 600);
 
-	UIElementProperties test_prop
-	{
-		.uiColour = {0.722f, 0.151f, 0.1f},
-		.uiPosition = {0.7f, -0.9},
-		.uiWidth = 0.2f,
-		.uiHeight = 0.2f
-	};
-
-	UIElement test_element = UIElement(test_prop);
-	UIElementGPU test_element_GPU = UIElementGPU(test_element);
-
-	//VAO
-	GLuint vaoUI = 0;
-	glGenVertexArrays(1, &vaoUI);
-	glBindVertexArray(vaoUI);
-	glBindBuffer(GL_ARRAY_BUFFER, test_element_GPU.BufferId(uiVboPositions_index));
-	glVertexAttribPointer(
-		0,
-		2, GL_FLOAT, GL_FALSE,
-		0,
-		0
-	);
-	glEnableVertexAttribArray(0);
-
-	glBindBuffer(GL_ARRAY_BUFFER, test_element_GPU.BufferId(uiVboVertexColour_index));
-	glVertexAttribPointer(
-		1,
-		3, GL_FLOAT, GL_FALSE,
-		0,
-		0
-	);
-	glEnableVertexAttribArray(1);
-
-	const GLsizei uiVertsCount = static_cast<GLsizei>(test_element.Vertices().size());
-
+	UIGroup UI = createUI();
 
 	OGL_CHECKPOINT_ALWAYS();
 
@@ -848,11 +816,19 @@ int main() try
 
 		glUseProgram(progUI.programId());
 		//give projection matrix to uniform
-		GLint locOrtho = glGetUniformLocation(progUI.programId(), "projection");
-		glUniformMatrix4fv(locOrtho, 1, GL_FALSE, &orthProj[0, 0]);
 
-		glBindVertexArray(vaoUI);
-		glDrawArrays(GL_TRIANGLES, 0, uiVertsCount);
+		//draw each UI element
+		for (int i = 0; i < UI.getElementCount(); i++) 
+		{
+			glBindVertexArray(UI.getElementGPU(i).ArrayId());
+
+			GLint Colour = glGetUniformLocation(progUI.programId(), "inColour");
+			Vec3f element_colour = UI.getElement(i).getColour();
+			glUniform3fv(Colour, 1, &element_colour.x);
+			glDrawArrays(GL_TRIANGLES, 0, static_cast<GLsizei>(UI.getElement(i).Vertices().size()));
+
+		}
+
 		glEnable (GL_DEPTH_TEST);
 
 
@@ -1144,5 +1120,32 @@ namespace
 		return combined;
 	}
 
+	UIGroup createUI() 
+	{	
+		std::vector<UIElement> elements;
 
+		UIElementProperties test_prop
+		{
+			.uiColour = {0.722f, 0.151f, 0.1f},
+			.uiPosition = {0.7f, -0.9},
+			.uiWidth = 0.2f,
+			.uiHeight = 0.2f
+		};
+
+		UIElement test_element = UIElement(test_prop);
+		elements.push_back(test_element);
+
+		UIElementProperties test_prop2
+		{
+			.uiColour = {0.22f, 0.151f, 0.9f},
+			.uiPosition = {0.45f, -0.9},
+			.uiWidth = 0.2f,
+			.uiHeight = 0.2f
+		};
+
+		UIElement test_element2 = UIElement(test_prop2);
+		elements.push_back(test_element2);
+
+		return UIGroup(elements);
+	}
 }

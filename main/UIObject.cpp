@@ -3,11 +3,7 @@
 UIElement::UIElement(UIElementProperties properties) 
 {
 	uiVertices = CalculateVerticies(properties.uiPosition, properties.uiWidth, properties.uiHeight);
-
-	for (int i = 0; i < uiVertices.size(); i++) {
-		uiVertexColours.push_back(properties.uiColour);
-	}
-
+	currentColour = properties.uiColour;
 }
 
 std::vector<Vec2f> UIElement::CalculateVerticies(Vec2f position, float width, float height)
@@ -42,26 +38,25 @@ std::vector<Vec2f>& UIElement::Vertices()
 	return uiVertices;
 };
 
-
-const std::vector<Vec3f>& UIElement::VertexColours() const
+const Vec3f UIElement::getColour() const
 {
-	return uiVertexColours;
+	return currentColour;
 }
 
-
-std::vector<Vec3f>& UIElement::VertexColours()
+Vec3f UIElement::getColour()
 {
-	return uiVertexColours;
-};
+	return currentColour;
+}
+
 
 
 //GPU version of the class for loading an element into VBO's
 UIElementGPU::UIElementGPU(const UIElement& UI) 
 	: uiVboPositions(0)
-	, uiVboVertexColour(0)
+	, uiVao(0)
 {
 	CreatePositionsVBO(UI);
-	CreateVertexColourVBO(UI);
+	CreateVAO();
 
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
@@ -75,7 +70,7 @@ UIElementGPU::~UIElementGPU()
 
 UIElementGPU::UIElementGPU(UIElementGPU&& other) noexcept
 	: uiVboPositions(std::exchange(other.uiVboPositions, 0))
-	, uiVboVertexColour(std::exchange(other.uiVboVertexColour, 0))
+	, uiVao(std::exchange(other.uiVao, 0))
 {
 }
 
@@ -87,7 +82,6 @@ UIElementGPU& UIElementGPU::operator=(UIElementGPU&& other) noexcept
 		ReleaseBuffers();
 
 		uiVboPositions = std::exchange(other.uiVboPositions, 0);
-		uiVboVertexColour = std::exchange(other.uiVboVertexColour, 0);
 	}
 
 	return *this;
@@ -104,12 +98,14 @@ GLuint UIElementGPU::BufferId(uiBufferType bufferType) const
 	case uiVboPositions_index:
 		ret = uiVboPositions;
 		break;
-	case uiVboVertexColour_index:
-		ret = uiVboVertexColour;
-		break;
-	};
+	}
 
 	return ret;
+}
+
+GLuint UIElementGPU::ArrayId() const 
+{
+	return uiVao;
 }
 
 void UIElementGPU::CreatePositionsVBO(const UIElement& UI) 
@@ -119,18 +115,24 @@ void UIElementGPU::CreatePositionsVBO(const UIElement& UI)
 	glBufferData(GL_ARRAY_BUFFER, UI.Vertices().size() * sizeof(Vec2f), UI.Vertices().data(), GL_STATIC_DRAW);
 }
 
-void UIElementGPU::CreateVertexColourVBO(const UIElement& UI)
+
+void UIElementGPU::CreateVAO() 
 {
-	glGenBuffers(1, &uiVboVertexColour);
-	glBindBuffer(GL_ARRAY_BUFFER, uiVboVertexColour);
-	glBufferData(GL_ARRAY_BUFFER, UI.VertexColours().size() * sizeof(Vec3f), UI.VertexColours().data(), GL_STATIC_DRAW);
+	glGenVertexArrays(1, &uiVao);
+	glBindVertexArray(uiVao);
+	glBindBuffer(GL_ARRAY_BUFFER, uiVboPositions);
+	glVertexAttribPointer(
+		0,
+		2, GL_FLOAT, GL_FALSE,
+		0,
+		0
+	);
+	glEnableVertexAttribArray(0);
 }
 
 void UIElementGPU::ReleaseBuffers() 
 {
 	glDeleteBuffers(1, &uiVboPositions);
-	glDeleteBuffers(1, &uiVboVertexColour);
 
 	uiVboPositions = 0;
-	uiVboVertexColour = 0;
 }

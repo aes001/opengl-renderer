@@ -24,8 +24,8 @@ public:
 	const std::vector<Vec2f>& Vertices() const;
 	std::vector<Vec2f>& Vertices();
 
-	const std::vector<Vec3f>& VertexColours() const;
-	std::vector<Vec3f>& VertexColours();
+	const Vec3f getColour() const;
+	Vec3f getColour();
 
 private:
 	std::vector<Vec2f> CalculateVerticies(Vec2f position, float width, float height);
@@ -33,7 +33,7 @@ private:
 
 private:
 	std::vector<Vec2f> uiVertices;
-	std::vector<Vec3f> uiVertexColours;
+	Vec3f currentColour;
 };
 
 
@@ -58,16 +58,19 @@ public:
 
 
 	GLuint BufferId(uiBufferType bufferType) const;
+	GLuint ArrayId() const;
 
 private:
 	void CreatePositionsVBO(const UIElement& UI);
-	void CreateVertexColourVBO(const UIElement& UI);
+
+	void CreateVAO();
 
 	void ReleaseBuffers();
 
 private:
 	GLuint uiVboPositions;
-	GLuint uiVboVertexColour;
+
+	GLuint uiVao;
 
 };
 

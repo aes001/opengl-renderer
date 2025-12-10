@@ -20,7 +20,7 @@ struct UIElementProperties
 	float uiBorderWidth;
 };
 
-class UIElement 
+class UIElement
 {
 public:
 	explicit UIElement(UIElementProperties properties);
@@ -63,7 +63,7 @@ enum uiBufferType : size_t
 	uiVboVertexColour_index,
 };
 
-class UIElementGPU 
+class UIElementGPU
 {
 public:
 	UIElementGPU( const UIElement& UI );

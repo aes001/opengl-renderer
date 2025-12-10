@@ -1,7 +1,7 @@
 #include "UIObject.hpp"
 #include <iostream>
 
-UIElement::UIElement(UIElementProperties properties) 
+UIElement::UIElement(UIElementProperties properties)
 {
 	CalculateVerticies(properties.uiPosition, properties.uiWidth, properties.uiHeight, properties.uiBorderWidth);
 	currentColour = properties.uiColour;
@@ -28,7 +28,7 @@ void UIElement::CalculateVerticies(Vec2f position, float width, float height, fl
 		R.push_back({ position });
 		R.push_back(LR);
 	}
-	else 
+	else
 	{
 		float b = borderWidth;
 		Vec2f p = position;
@@ -73,7 +73,7 @@ void UIElement::CalculateBounds()
 
 }
 
-void UIElement::checkUpdates(Vec2f mousePos, int mouseStatus) 
+void UIElement::checkUpdates(Vec2f mousePos, int mouseStatus)
 {
 
 	//check if within bounds of element
@@ -82,20 +82,20 @@ void UIElement::checkUpdates(Vec2f mousePos, int mouseStatus)
 	{
 		currentColour = elementProperties.uiColour / 2.f;
 
-		if (mouseStatus == GLFW_PRESS) 
+		if (mouseStatus == GLFW_PRESS)
 		{
 			currentColour = elementProperties.uiColour / 4.f;
 
-			if (lastUpdateState != mouseStatus) 
+			if (lastUpdateState != mouseStatus)
 			{
 				TriggerCallbacks();
 			}
-			
+
 		}
 		lastUpdateState = mouseStatus;
 
 	}
-	else 
+	else
 	{
 		currentColour = elementProperties.uiColour;
 	}
@@ -151,7 +151,7 @@ void UIElement::TriggerCallbacks()
 
 
 //GPU version of the class for loading an element into VBO's
-UIElementGPU::UIElementGPU(const UIElement& UI) 
+UIElementGPU::UIElementGPU(const UIElement& UI)
 	: uiVboPositions(0)
 	, uiVboBorderFlags(0)
 	, uiVao(0)
@@ -206,12 +206,12 @@ GLuint UIElementGPU::BufferId(uiBufferType bufferType) const
 	return ret;
 }
 
-GLuint UIElementGPU::ArrayId() const 
+GLuint UIElementGPU::ArrayId() const
 {
 	return uiVao;
 }
 
-void UIElementGPU::CreatePositionsVBO(const UIElement& UI) 
+void UIElementGPU::CreatePositionsVBO(const UIElement& UI)
 {
 	glGenBuffers(1, &uiVboPositions);
 	glBindBuffer(GL_ARRAY_BUFFER, uiVboPositions);
@@ -226,7 +226,7 @@ void UIElementGPU::CreateBorderFlagsVBO(const UIElement& UI)
 }
 
 
-void UIElementGPU::CreateVAO() 
+void UIElementGPU::CreateVAO()
 {
 	glGenVertexArrays(1, &uiVao);
 	glBindVertexArray(uiVao);
@@ -249,7 +249,7 @@ void UIElementGPU::CreateVAO()
 	glEnableVertexAttribArray(1);
 }
 
-void UIElementGPU::ReleaseBuffers() 
+void UIElementGPU::ReleaseBuffers()
 {
 	glDeleteBuffers(1, &uiVboPositions);
 	glDeleteBuffers(1, &uiVboBorderFlags);

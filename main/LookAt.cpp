@@ -14,7 +14,7 @@ Mat44f MakeLookAt( const Vec3f& P, const Vec3f& D, const Vec3f& U, const Vec3f& 
 	return Axis * translation;
 }
 
-Mat44f MakeOrthoProj(int const left, int const right, int const bottom, int const top, int const zNear, int const zFar ) 
+Mat44f MakeOrthoProj(int const left, int const right, int const bottom, int const top, int const zNear, int const zFar )
 {
 	Mat44f Result;
 	Result[0, 0] = float(2 / (right - left));

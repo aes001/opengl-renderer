@@ -3,7 +3,7 @@
 UIGroup::UIGroup(std::vector<UIElement> UIelements)
 	: elementCount(0)
 {
-	for (auto const& element : UIelements) 
+	for (auto const& element : UIelements)
 	{
 		uiElements.push_back(element);
 		uiElementGPUs.push_back(UIElementGPU(element));
@@ -39,7 +39,7 @@ UIElementGPU& UIGroup::getElementGPU(int index)
 	return uiElementGPUs[index];
 }
 
-const int& UIGroup::getElementCount() const 
+const int& UIGroup::getElementCount() const
 {
 	return elementCount;
 }

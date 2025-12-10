@@ -1141,7 +1141,8 @@ namespace
 			.uiColour = {0.722f, 0.151f, 0.1f, 0.5f},
 			.uiPosition = {0.7f, -0.9},
 			.uiWidth = 0.2f,
-			.uiHeight = 0.2f
+			.uiHeight = 0.2f,
+			.uiBorderWidth = 0.01f
 		};
 
 		UIElement test_element = UIElement(test_prop);
@@ -1152,7 +1153,8 @@ namespace
 			.uiColour = {0.22f, 0.151f, 0.9f, 0.5f},
 			.uiPosition = {0.45f, -0.9},
 			.uiWidth = 0.2f,
-			.uiHeight = 0.2f
+			.uiHeight = 0.2f,
+			.uiBorderWidth = 0.05f
 		};
 
 		UIElement test_element2 = UIElement(test_prop2);
@@ -1163,7 +1165,8 @@ namespace
 			.uiColour = {1.f, 0.f, 0.f, 0.5f},
 			.uiPosition = {0.5f, 0.5f},
 			.uiWidth = 0.2f,
-			.uiHeight = 0.2f
+			.uiHeight = 0.2f,
+			.uiBorderWidth = 0.f
 		};
 
 		UIElement test_element3(test_prop3);

@@ -15,6 +15,7 @@ struct UIElementProperties
 	Vec2f uiPosition;
 	float uiWidth;
 	float uiHeight;
+	float uiBorderWidth;
 };
 
 class UIElement 
@@ -27,15 +28,19 @@ public:
 	const std::vector<Vec2f>& Vertices() const;
 	std::vector<Vec2f>& Vertices();
 
+	const std::vector<uint8_t>& BorderFlags() const;
+	std::vector<uint8_t>& BorderFlags();
+
 	const Vec4f getColour() const;
 	Vec4f getColour();
 
 private:
-	std::vector<Vec2f> CalculateVerticies(Vec2f position, float width, float height);
+	void CalculateVerticies(Vec2f position, float width, float height, float borderWidth);
 	void CalculateBounds();
 
 private:
 	std::vector<Vec2f> uiVertices;
+	std::vector<uint8_t> uiBorderFlags;
 	Vec4f currentColour;
 	UIElementProperties elementProperties;
 	float LB, RB, BB, UB; //Left Bound, Right Bound, Bottom Bount, Upper Bound
@@ -69,12 +74,15 @@ public:
 private:
 	void CreatePositionsVBO(const UIElement& UI);
 
+	void CreateBorderFlagsVBO(const UIElement& UI);
+
 	void CreateVAO();
 
 	void ReleaseBuffers();
 
 private:
 	GLuint uiVboPositions;
+	GLuint uiVboBorderFlags;
 
 	GLuint uiVao;
 

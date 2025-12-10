@@ -3,30 +3,65 @@
 
 UIElement::UIElement(UIElementProperties properties) 
 {
-	uiVertices = CalculateVerticies(properties.uiPosition, properties.uiWidth, properties.uiHeight);
+	CalculateVerticies(properties.uiPosition, properties.uiWidth, properties.uiHeight, properties.uiBorderWidth);
 	currentColour = properties.uiColour;
 	elementProperties = properties;
 	CalculateBounds();
 }
 
-std::vector<Vec2f> UIElement::CalculateVerticies(Vec2f position, float width, float height)
+void UIElement::CalculateVerticies(Vec2f position, float width, float height, float borderWidth)
 {
 	std::vector<Vec2f> R;
+	std::vector<uint8_t> B;
 
 	Vec2f UL = position + Vec2f{0.f, height};
 	Vec2f UR = position + Vec2f{ width, height };
 	Vec2f LR = position + Vec2f{ width, 0.f };
 
-	//triangle 1
-	R.push_back(UL);
-	R.push_back({ position });
-	R.push_back( UR );
-	//triangle 2
-	R.push_back(UR);
-	R.push_back({ position });
-	R.push_back(LR);
+	if (borderWidth == 0.f) {
+		//triangle 1
+		R.push_back(UL);
+		R.push_back({ position });
+		R.push_back(UR);
+		//triangle 2
+		R.push_back(UR);
+		R.push_back({ position });
+		R.push_back(LR);
+	}
+	else 
+	{
+		float b = borderWidth;
+		Vec2f p = position;
 
-	return R;
+		R.insert(R.end(), { UR, UL, UR - Vec2f{0, b} }); // top border
+		R.insert(R.end(), { UR + Vec2f{0, -b}, UL, UL + Vec2f{0, - b}});
+
+		R.insert(R.end(), { UL + Vec2f{0, -b}, p + Vec2f{0, b}, UL + Vec2f{b, -b} }); // left border
+		R.insert(R.end(), { UL + Vec2f{b, -b}, p + Vec2f{0, b}, p + Vec2f{b, b} });
+
+		R.insert(R.end(), { LR + Vec2f{0, b}, p + Vec2f{0, b}, LR }); //lower border
+		R.insert(R.end(), { LR, p + Vec2f{0, b}, p });
+
+		R.insert(R.end(), { UR + Vec2f{-b, -b}, LR + Vec2f{-b, b}, UR + Vec2f{0, -b} }); //right border
+		R.insert(R.end(), { UR + Vec2f{0, -b}, LR + Vec2f{-b, b}, LR + Vec2f{0, b},  });
+
+		for (int i = 0; i < R.size(); i++)
+		{
+			B.push_back(1);
+		}
+
+		R.insert(R.end(), { UL + Vec2f(b, -b), p + Vec2f{b, b}, LR + Vec2f{-b, b} }); //inner fill
+		R.insert(R.end(), { UR + Vec2f(-b, -b), UL + Vec2f{b, -b}, LR + Vec2f{-b, b} });
+
+		for (int i = 0; i < 6; i++)
+		{
+			B.push_back(0);
+		}
+	}
+
+
+	uiVertices = R;
+	uiBorderFlags = B;
 }
 
 void UIElement::CalculateBounds()
@@ -66,6 +101,16 @@ std::vector<Vec2f>& UIElement::Vertices()
 	return uiVertices;
 };
 
+const std::vector<uint8_t>& UIElement::BorderFlags() const
+{
+	return uiBorderFlags;
+}
+
+std::vector<uint8_t>& UIElement::BorderFlags()
+{
+	return uiBorderFlags;
+}
+
 const Vec4f UIElement::getColour() const
 {
 	return currentColour;
@@ -81,9 +126,11 @@ Vec4f UIElement::getColour()
 //GPU version of the class for loading an element into VBO's
 UIElementGPU::UIElementGPU(const UIElement& UI) 
 	: uiVboPositions(0)
+	, uiVboBorderFlags(0)
 	, uiVao(0)
 {
 	CreatePositionsVBO(UI);
+	CreateBorderFlagsVBO(UI);
 	CreateVAO();
 
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -98,6 +145,7 @@ UIElementGPU::~UIElementGPU()
 
 UIElementGPU::UIElementGPU(UIElementGPU&& other) noexcept
 	: uiVboPositions(std::exchange(other.uiVboPositions, 0))
+	, uiVboBorderFlags(std::exchange(other.uiVboBorderFlags, 0))
 	, uiVao(std::exchange(other.uiVao, 0))
 {
 }
@@ -143,6 +191,13 @@ void UIElementGPU::CreatePositionsVBO(const UIElement& UI)
 	glBufferData(GL_ARRAY_BUFFER, UI.Vertices().size() * sizeof(Vec2f), UI.Vertices().data(), GL_STATIC_DRAW);
 }
 
+void UIElementGPU::CreateBorderFlagsVBO(const UIElement& UI)
+{
+	glGenBuffers(1, &uiVboBorderFlags);
+	glBindBuffer(GL_ARRAY_BUFFER, uiVboBorderFlags);
+	glBufferData(GL_ARRAY_BUFFER, UI.BorderFlags().size() * sizeof(uint8_t), UI.BorderFlags().data(), GL_STATIC_DRAW);
+}
+
 
 void UIElementGPU::CreateVAO() 
 {
@@ -156,6 +211,15 @@ void UIElementGPU::CreateVAO()
 		0
 	);
 	glEnableVertexAttribArray(0);
+
+	glBindBuffer(GL_ARRAY_BUFFER, uiVboBorderFlags);
+	glVertexAttribIPointer(
+		1,
+		1, GL_UNSIGNED_BYTE,
+		0,
+		0
+	);
+	glEnableVertexAttribArray(1);
 }
 
 void UIElementGPU::ReleaseBuffers() 

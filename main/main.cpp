@@ -34,7 +34,8 @@ extern "C"
 #include "AnimationTools.hpp"
 #include "GeometricHelpers.hpp"
 #include "Light.hpp"
-
+#include "UIObject.hpp"
+#include "UIGroup.hpp"
 
 namespace
 {
@@ -88,6 +89,9 @@ namespace
 		float fbwidth{ 1280 };
 		float fbheight{ 720 };
 
+		Vec2f mousePos;
+		int mouseStatus;
+
 		size_t selectedCamera_topScreen{ 0 };
 		size_t selectedCamera_bottomScreen{ 0 };
 		std::vector<CamCtrl*> camControl;
@@ -117,6 +121,8 @@ namespace
 		GLuint lightsUBO{0};
 
 		std::vector<Vec4f>* lightOriginalPositions;
+
+		UIGroup* UI;
 	};
 
 
@@ -127,6 +133,8 @@ namespace
 	void updateCamera(State_& state);
 
 	ModelObject create_ship();
+	UIGroup createUI( GLFWwindow* aWindow );
+	Vec2f convertCursorPos(float x, float y, float width, float height);
 
 
 	enum eSelectedCamera : size_t
@@ -265,9 +273,19 @@ int main() try
 		{GL_FRAGMENT_SHADER, "assets/cw2/materialColour.frag"}
 	} );
 
+	ShaderProgram progUI({
+		{ GL_VERTEX_SHADER, "assets/cw2/uiShader.vert" },
+		{ GL_FRAGMENT_SHADER, "assets/cw2/uiShader.frag" }
+	});
+
 	state.progs.push_back(&prog);
 	state.progs.push_back(&prog2);
+	state.progs.push_back(&progUI);
 	auto last = Clock::now();
+
+#pragma region ModelLoad
+
+
 
 
 	uint32_t terrainLoadFlags = kLoadTextureCoords | kLoadVertexColour;
@@ -476,6 +494,12 @@ int main() try
 	);
 	glEnableVertexAttribArray(4);
 
+#pragma endregion
+
+#pragma region LightsInit
+
+
+
 	//LIGHTS
 	state.currentGlobalLight = state.diffuseLight;
 
@@ -516,7 +540,7 @@ int main() try
 	glBindVertexArray( 0 );
 	glBindBuffer( GL_ARRAY_BUFFER, 0 );
 
-
+#pragma endregion
 
 	// Animating
 	// Space ship animation
@@ -676,7 +700,9 @@ int main() try
 
 	state.animatedFloatsPtr = &spaceShipAnimatedFloats;
 
-
+	//UI initialisation
+	UIGroup UI = createUI(window);
+	state.UI = &UI;
 
 	OGL_CHECKPOINT_ALWAYS();
 
@@ -760,6 +786,31 @@ int main() try
 		}
 
 
+		//Render UI
+		glViewport( 0, 0, fbwidth, fbheight );
+		glDisable(GL_DEPTH_TEST);
+
+		glUseProgram(progUI.programId());
+		//give projection matrix to uniform
+
+		glEnable(GL_BLEND); //enter blending mode to use transparency
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+		UI.checkMouseInterractions(state.mousePos, state.mouseStatus);
+		//draw each UI element
+		for (int i = 0; i < UI.getElementCount(); i++)
+		{
+			glBindVertexArray(UI.getElementGPU(i).ArrayId());
+
+			GLint Colour = glGetUniformLocation(progUI.programId(), "inColour");
+			Vec4f element_colour = UI.getElement(i).getColour();
+			glUniform4fv(Colour, 1, &element_colour.x);
+			glDrawArrays(GL_TRIANGLES, 0, static_cast<GLsizei>(UI.getElement(i).Vertices().size()));
+
+		}
+
+		glDisable(GL_BLEND);
+		glEnable(GL_DEPTH_TEST);
 
 
 		// Cleanup
@@ -871,6 +922,12 @@ namespace
 			const bool freeCamSelected = state->selectedCamera_topScreen == kFreeCam ||
 										(state->selectedCamera_bottomScreen == kFreeCam && state->isSplitScreen);
 
+			//get mouse position
+			int width, height;
+			glfwGetWindowSize(aWindow, &width, &height);
+			state->mousePos = convertCursorPos(float(aX), float(aY), float(width), float(height));
+
+
 			if( state->camControl[kFreeCam]->cameraActive && freeCamSelected )
 			{
 				auto const dx = float(aX-state->camControl[0]->lastX);
@@ -903,6 +960,10 @@ namespace
 				glfwSetInputMode( aWindow, GLFW_CURSOR, GLFW_CURSOR_DISABLED );
 			else
 				glfwSetInputMode( aWindow, GLFW_CURSOR, GLFW_CURSOR_NORMAL );
+		}
+		if (aButton == GLFW_MOUSE_BUTTON_LEFT)
+		{
+			state->mouseStatus = aAction;
 		}
 	}
 
@@ -1110,6 +1171,54 @@ namespace
 		return combined;
 	}
 
+	UIGroup createUI( GLFWwindow* aWindow )
+	{
+		auto* state = static_cast<State_*>(glfwGetWindowUserPointer(aWindow));
+
+		std::vector<UIElement> elements;
+
+		UIElementProperties toggleAnimationBtn_prop
+		{
+			.uiColour = {0.1f, 0.9f, 0.1f, 0.5f},
+			.uiPosition = {-0.1f, -0.9},
+			.uiWidth = 0.15f,
+			.uiHeight = 0.2f,
+			.uiBorderWidth = 0.02f
+		};
+
+		UIElement toggleAnimationBtn = UIElement(toggleAnimationBtn_prop);
+		toggleAnimationBtn.InsertOnClickCallback([state] ()
+			{
+				for (auto& anim : *(state->animatedFloatsPtr))
+				{
+					anim.Toggle();
+				}
+			});
+		elements.push_back(toggleAnimationBtn);
+
+		UIElementProperties resetAnimationBtn_prop2
+		{
+			.uiColour = {0.9f, 0.1f, 0.1f, 0.5f},
+			.uiPosition = {0.1f, -0.9},
+			.uiWidth = 0.15f,
+			.uiHeight = 0.2f,
+			.uiBorderWidth = 0.02f
+		};
+
+		UIElement resetAnimationBtn = UIElement(resetAnimationBtn_prop2);
+		resetAnimationBtn.InsertOnClickCallback([state]()
+			{
+				for (auto& anim : *(state->animatedFloatsPtr))
+				{
+					anim.Stop();
+				}
+			});
+		elements.push_back(resetAnimationBtn);
+
+
+		return UIGroup(elements);
+	}
+
 	void RenderScene( const CamCtrl& aCamCtrl, GLFWwindow* aWindow )
 	{
 		auto& state = *(static_cast<State_*>(glfwGetWindowUserPointer( aWindow )));
@@ -1240,4 +1349,14 @@ namespace
 		glDrawArraysInstanced( GL_TRIANGLES, 0, state.numSpaceShipVerts, state.spaceShipInstPtr->GetInstanceCount());
 	}
 
+
+
+	Vec2f convertCursorPos(float x, float y, float width, float height)
+	{
+		Vec2f R;
+		R.x = (x / width) - 0.5f;
+		R.y = -(y / height) + 0.5f;
+
+		return R * 2.f;
+	}
 }

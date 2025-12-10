@@ -252,6 +252,31 @@ uint32_t ModelObject::LoadFlags() const
 }
 
 
+void ModelObject::OriginToGeometry()
+{
+	Vec3f min{ +FLT_MAX, +FLT_MAX, +FLT_MAX };
+	Vec3f max{ -FLT_MAX, -FLT_MAX, -FLT_MAX };
+
+	for( auto& v : mVertices )
+	{
+		min.x = std::min(v.x, min.x);
+		min.y = std::min(v.y, min.y);
+		min.z = std::min(v.z, min.z);
+
+		max.x = std::max(v.x, max.x);
+		max.y = std::max(v.y, max.y);
+		max.z = std::max(v.z, max.z);
+	}
+
+	Vec3f center = (min + max) / 2.f;
+
+	for( auto& v : mVertices )
+	{
+		v -= center;
+	}
+}
+
+
 GLuint LoadTexture2D( char const* aPath )
 {
 	// ACKNOWLEDGEMENT

@@ -5,6 +5,7 @@ KeyFramedFloat::KeyFramedFloat()
 	: mCurrentKFIndex( 0 )
 	, mTimeOnCurrentKF( 0.f )
 	, mTotalTimeElapsed( 0.f )
+	, mCurrentValue( 0.f )
 	, mIsFinished( false )
 	, mIsPlaying( false )
 {
@@ -15,6 +16,7 @@ KeyFramedFloat::KeyFramedFloat( FloatKeyFrame initial )
 	: mCurrentKFIndex( 0 )
 	, mTimeOnCurrentKF( 0.f )
 	, mTotalTimeElapsed( 0.f )
+	, mCurrentValue( initial.mValue )
 	, mIsFinished( false )
 	, mIsPlaying( false )
 {
@@ -70,14 +72,13 @@ float KeyFramedFloat::Update( float aDeltaTime )
 		mTimeOnCurrentKF += aDeltaTime;
 	}
 
-	float ret;
 
 	const FloatKeyFrame& currentKF = mKeyFrames[ mCurrentKFIndex ];
 	const FloatKeyFrame& nextKF    = mKeyFrames[ mCurrentKFIndex + 1 ];
 
 	float interpolationProgress = nextKF.mDuration != 0.f ? std::min(mTimeOnCurrentKF / nextKF.mDuration, 1.f) : 1.f;
 
-	ret = Lerp(currentKF.mValue, nextKF.mValue, nextKF.mShapingFunc(interpolationProgress));
+	mCurrentValue = Lerp(currentKF.mValue, nextKF.mValue, nextKF.mShapingFunc(interpolationProgress));
 
 	if( interpolationProgress == 1.f )
 	{
@@ -92,7 +93,7 @@ float KeyFramedFloat::Update( float aDeltaTime )
 		}
 	}
 
-	return ret;
+	return mCurrentValue;
 }
 
 
@@ -105,6 +106,12 @@ void KeyFramedFloat::InsertKeyframe( FloatKeyFrame aKf )
 void KeyFramedFloat::InsertOnFinishCallback( std::function<void()> cb )
 {
 	mOnFinishCallbacks.push_back( cb );
+}
+
+
+float KeyFramedFloat::GetCurrentValue()
+{
+	return mCurrentValue;
 }
 
 

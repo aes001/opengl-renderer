@@ -9,6 +9,7 @@
 #include "../vmlib/vec4.hpp"
 
 #include <vector>
+#include <functional>
 
 struct UIElementProperties
 {
@@ -35,13 +36,18 @@ public:
 	const Vec4f getColour() const;
 	Vec4f getColour();
 
+	void InsertOnClickCallback(std::function<void()> cb);
+
+
 private:
 	void CalculateVerticies(Vec2f position, float width, float height, float borderWidth);
 	void CalculateBounds();
+	void TriggerCallbacks();
 
 private:
 	std::vector<Vec2f> uiVertices;
 	std::vector<uint8_t> uiBorderFlags;
+	std::vector<std::function<void()>> uiOnClickCallbacks;
 	Vec4f currentColour;
 	UIElementProperties elementProperties;
 	float LB, RB, BB, UB; //Left Bound, Right Bound, Bottom Bount, Upper Bound

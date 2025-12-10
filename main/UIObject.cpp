@@ -85,6 +85,7 @@ void UIElement::checkUpdates(Vec2f mousePos, int mouseStatus)
 		if (mouseStatus == GLFW_PRESS) 
 		{
 			currentColour = elementProperties.uiColour / 4.f;
+			TriggerCallbacks();
 		}
 
 	}
@@ -127,6 +128,20 @@ Vec4f UIElement::getColour()
 	return currentColour;
 }
 
+
+void UIElement::InsertOnClickCallback(std::function<void()> cb)
+{
+	uiOnClickCallbacks.push_back(cb);
+}
+
+
+void UIElement::TriggerCallbacks()
+{
+	for (auto& cb : uiOnClickCallbacks)
+	{
+		cb();
+	}
+}
 
 
 //GPU version of the class for loading an element into VBO's
@@ -231,6 +246,8 @@ void UIElementGPU::CreateVAO()
 void UIElementGPU::ReleaseBuffers() 
 {
 	glDeleteBuffers(1, &uiVboPositions);
+	glDeleteBuffers(1, &uiVboBorderFlags);
 
 	uiVboPositions = 0;
+	uiVboBorderFlags = 0;
 }

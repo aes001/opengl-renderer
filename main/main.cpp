@@ -96,7 +96,7 @@ namespace
 	void updateCamera(State_& state);
 
 	ModelObject create_ship();
-	UIGroup createUI();
+	UIGroup createUI( GLFWwindow* aWindow );
 	Vec2f convertCursorPos(float x, float y, float width, float height);
 }
 
@@ -635,7 +635,7 @@ int main() try
 	state.animatedFloatsPtr = &spaceShipAnimatedFloats;
 
 	//UI initialisation
-	UIGroup UI = createUI();
+	UIGroup UI = createUI(window);
 
 	OGL_CHECKPOINT_ALWAYS();
 
@@ -1136,8 +1136,10 @@ namespace
 		return combined;
 	}
 
-	UIGroup createUI() 
-	{	
+	UIGroup createUI( GLFWwindow* aWindow )
+	{
+		auto* state = static_cast<State_*>(glfwGetWindowUserPointer(aWindow));
+
 		std::vector<UIElement> elements;
 
 		UIElementProperties test_prop
@@ -1149,8 +1151,15 @@ namespace
 			.uiBorderWidth = 0.01f
 		};
 
-		UIElement test_element = UIElement(test_prop);
-		elements.push_back(test_element);
+		UIElement toggleAnimationBtn = UIElement(test_prop);
+		toggleAnimationBtn.InsertOnClickCallback([state] ()
+			{
+				for (auto& anim : *(state->animatedFloatsPtr))
+				{
+					anim.Toggle();
+				}
+			});
+		elements.push_back(toggleAnimationBtn);
 
 		UIElementProperties test_prop2
 		{
@@ -1161,8 +1170,15 @@ namespace
 			.uiBorderWidth = 0.05f
 		};
 
-		UIElement test_element2 = UIElement(test_prop2);
-		elements.push_back(test_element2);
+		UIElement resetAnimationBtn = UIElement(test_prop2);
+		resetAnimationBtn.InsertOnClickCallback([state]()
+			{
+				for (auto& anim : *(state->animatedFloatsPtr))
+				{
+					anim.Stop();
+				}
+			});
+		elements.push_back(resetAnimationBtn);
 
 		UIElementProperties test_prop3
 		{

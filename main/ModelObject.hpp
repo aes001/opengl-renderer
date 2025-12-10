@@ -78,6 +78,8 @@ public:
 
 	uint32_t LoadFlags() const;
 
+	void OriginToGeometry();
+
 
 private:
 	Vec3f CalculateNormal(Vec3f vertexA, Vec3f vertexB, Vec3f vertexC);

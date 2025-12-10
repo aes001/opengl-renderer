@@ -10,13 +10,13 @@ struct Vec4f
 {
 	float x, y, z, w;
 
-	constexpr 
+	constexpr
 	float& operator[] (std::size_t aI) noexcept
 	{
 		assert( aI < 4 );
 		return aI[&x]; // This is a bit sketchy.
 	}
-	constexpr 
+	constexpr
 	float operator[] (std::size_t aI) const noexcept
 	{
 		assert( aI < 4 );
@@ -61,11 +61,11 @@ Vec4f operator-( Vec4f aLeft, Vec4f aRight ) noexcept
 constexpr
 Vec4f operator*( float aScalar, Vec4f aVec ) noexcept
 {
-	return Vec4f{ 
-		aScalar * aVec.x, 
-		aScalar * aVec.y, 
-		aScalar * aVec.z, 
-		aScalar * aVec.w 
+	return Vec4f{
+		aScalar * aVec.x,
+		aScalar * aVec.y,
+		aScalar * aVec.z,
+		aScalar * aVec.w
 	};
 }
 constexpr
@@ -77,7 +77,7 @@ Vec4f operator*( Vec4f aVec, float aScalar ) noexcept
 constexpr
 Vec4f operator/( Vec4f aVec, float aScalar ) noexcept
 {
-	return Vec4f{ 
+	return Vec4f{
 		aVec.x / aScalar,
 		aVec.y / aScalar,
 		aVec.z / aScalar,
@@ -130,7 +130,7 @@ Vec4f& operator/=( Vec4f& aLeft, float aRight ) noexcept
 constexpr
 float dot( Vec4f aLeft, Vec4f aRight ) noexcept
 {
-	return aLeft.x * aRight.x 
+	return aLeft.x * aRight.x
 		+ aLeft.y * aRight.y
 		+ aLeft.z * aRight.z
 		+ aLeft.w * aRight.w
@@ -145,6 +145,6 @@ float length( Vec4f aVec ) noexcept
 	// constexpr itself.
 	return std::sqrt( dot( aVec, aVec ) );
 }
-
+		
 
 #endif // VEC4_HPP_7524F057_7AA7_4C99_AA52_DB0B5A3F8CAA

@@ -110,6 +110,8 @@ public:
 
 	void InsertOnFinishCallback( std::function<void()> cb );
 
+	float GetCurrentValue();
+
 
 private:
 	void TriggerCallbacks();
@@ -121,6 +123,7 @@ private:
 	size_t mCurrentKFIndex;
 	float mTimeOnCurrentKF;
 	float mTotalTimeElapsed;
+	float mCurrentValue;
 	bool mIsFinished;
 	bool mIsPlaying;
 };

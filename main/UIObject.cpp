@@ -1,9 +1,12 @@
 #include "UIObject.hpp"
+#include <iostream>
 
 UIElement::UIElement(UIElementProperties properties) 
 {
 	uiVertices = CalculateVerticies(properties.uiPosition, properties.uiWidth, properties.uiHeight);
 	currentColour = properties.uiColour;
+	elementProperties = properties;
+	CalculateBounds();
 }
 
 std::vector<Vec2f> UIElement::CalculateVerticies(Vec2f position, float width, float height)
@@ -24,6 +27,31 @@ std::vector<Vec2f> UIElement::CalculateVerticies(Vec2f position, float width, fl
 	R.push_back(LR);
 
 	return R;
+}
+
+void UIElement::CalculateBounds()
+{
+	LB = elementProperties.uiPosition.x;
+	RB = elementProperties.uiPosition.x + elementProperties.uiWidth;
+	BB = elementProperties.uiPosition.y;
+	UB = elementProperties.uiPosition.y + elementProperties.uiHeight;
+
+}
+
+void UIElement::checkUpdates(Vec2f mousePos) 
+{
+
+	//check if within bounds of element
+	if (LB <= mousePos.x && mousePos.x <= RB &&
+		BB <= mousePos.y && mousePos.y <= UB)
+	{
+		currentColour = elementProperties.uiColour / 2.f;
+	}
+	else 
+	{
+		currentColour = elementProperties.uiColour;
+	}
+
 }
 
 

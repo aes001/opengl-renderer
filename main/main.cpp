@@ -37,7 +37,6 @@ extern "C"
 #include "UIObject.hpp"
 #include "UIGroup.hpp"
 
-
 namespace
 {
 	constexpr char const* kWindowTitle = "COMP3811 - CW2";
@@ -71,6 +70,7 @@ namespace
 		float dt;
 		float speedMod;
 		bool pressedKeys[KEY_COUNT_GLFW] = { false };
+		Vec2f mousePos;
 
 		struct CamCtrl_
 		{
@@ -95,6 +95,7 @@ namespace
 
 	ModelObject create_ship();
 	UIGroup createUI();
+	Vec2f convertCursorPos(float x, float y, float width, float height);
 }
 
 int main() try
@@ -817,6 +818,7 @@ int main() try
 		glUseProgram(progUI.programId());
 		//give projection matrix to uniform
 
+		UI.checkMouseInterractions(state.mousePos);
 		//draw each UI element
 		for (int i = 0; i < UI.getElementCount(); i++) 
 		{
@@ -919,6 +921,12 @@ namespace
 	{
 		if( auto* state = static_cast<State_*>(glfwGetWindowUserPointer( aWindow )) )
 		{
+			//get mouse position
+			int width, height;
+			glfwGetWindowSize(aWindow, &width, &height);
+			state->mousePos = convertCursorPos(float(aX), float(aY), float(width), float(height));
+
+			//apply camera changes
 			if( state->camControl.cameraActive )
 			{
 				auto const dx = float(aX-state->camControl.lastX);
@@ -1146,6 +1154,26 @@ namespace
 		UIElement test_element2 = UIElement(test_prop2);
 		elements.push_back(test_element2);
 
+		UIElementProperties test_prop3
+		{
+			.uiColour = {1.f, 0.f, 0.f},
+			.uiPosition = {0.5f, 0.5f},
+			.uiWidth = 0.2f,
+			.uiHeight = 0.2f
+		};
+
+		UIElement test_element3(test_prop3);
+		elements.push_back(test_element3);
+
 		return UIGroup(elements);
+	}
+
+	Vec2f convertCursorPos(float x, float y, float width, float height) 
+	{
+		Vec2f R;
+		R.x = (x / width) - 0.5f;
+		R.y = -(y / height) + 0.5f;
+
+		return R * 2.f;
 	}
 }

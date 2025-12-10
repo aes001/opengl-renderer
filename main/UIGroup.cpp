@@ -11,6 +11,14 @@ UIGroup::UIGroup(std::vector<UIElement> UIelements)
 	}
 }
 
+void UIGroup::checkMouseInterractions(Vec2f mousePos)
+{
+	for (int i = 0; i < elementCount; i++)
+	{
+		uiElements[i].checkUpdates(mousePos);
+	}
+}
+
 const UIElement& UIGroup::getElement(int index) const
 {
 	return uiElements[index];

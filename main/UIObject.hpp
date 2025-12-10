@@ -21,6 +21,8 @@ class UIElement
 public:
 	explicit UIElement(UIElementProperties properties);
 
+	void checkUpdates(Vec2f mousePos);
+
 	const std::vector<Vec2f>& Vertices() const;
 	std::vector<Vec2f>& Vertices();
 
@@ -29,11 +31,14 @@ public:
 
 private:
 	std::vector<Vec2f> CalculateVerticies(Vec2f position, float width, float height);
-
+	void CalculateBounds();
 
 private:
 	std::vector<Vec2f> uiVertices;
 	Vec3f currentColour;
+	UIElementProperties elementProperties;
+	float LB, RB, BB, UB; //Left Bound, Right Bound, Bottom Bount, Upper Bound
+
 };
 
 

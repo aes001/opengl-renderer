@@ -1,8 +1,10 @@
 #include "Particle.hpp"
+#include "ModelObject.hpp"
 #include <stb_image.h>
 #include <random>
+#include <string>
 
-ParticleSource::ParticleSource(Vec3f position, int n_particles)
+ParticleSource::ParticleSource(Vec3f position, int n_particles, std::string tex_path)
 	: mVboVertices(0)
 	, mParticleVAO(0)
 	, mRandomGenerator(0)
@@ -15,12 +17,14 @@ ParticleSource::ParticleSource(Vec3f position, int n_particles)
 		mParticles.push_back(Particle());
 	}
 	
+	mTextureID = LoadTexture2D(tex_path.c_str());
 	CreatePositionsVBO();
+	CreateTextureCoordsVBO();
 	CreateParticleVAO();
 
 }
 
-void ParticleSource::UpdateParticles(int newParticles, float spread)
+void ParticleSource::UpdateParticles(int newParticles, float spread, float dt)
 {
 	//spawn particles
 	int spawned = 0;
@@ -34,7 +38,8 @@ void ParticleSource::UpdateParticles(int newParticles, float spread)
 
 	for (int i = 0; i < mParticles.size(); i++) 
 	{
-		mParticles[i].life -= 0.01;
+		mParticles[i].life -= dt;
+		mParticles[i].Colour.w -= dt * 2.f;
 	}
 
 }
@@ -50,13 +55,34 @@ const GLuint ParticleSource::ParticleVAO() const
 	return mParticleVAO;
 }
 
+const GLuint ParticleSource::GetTexture() const
+{
+	return mTextureID;
+}
 
 const Vec3f ParticleSource::GetOrigin() const
 {
 	return mSourceOrigin;
 }
 
+void  ParticleSource::SetOrigin(Vec3f newOrigin)
+{
+	mSourceOrigin = newOrigin;
+}
 
+void ParticleSource::CreateTextureCoordsVBO() 
+{
+	Vec2f LL = { 0.f, 0.f};
+	Vec2f UL = { 0.f, 1.f};
+	Vec2f LR = { 1.f, 0.f};
+	Vec2f UR = { 1.f, 1.f};
+	std::vector<Vec2f> tV = { UL, LL, UR, UR, LL, LR };
+
+	glGenBuffers(1, &mTextureCoordsVBO);
+	glBindBuffer(GL_ARRAY_BUFFER, mTextureCoordsVBO);
+	glBufferData(GL_ARRAY_BUFFER, tV.size() * sizeof(Vec2f), tV.data(), GL_STATIC_DRAW);
+
+}
 
 void ParticleSource::CreatePositionsVBO() 
 {
@@ -84,11 +110,21 @@ void ParticleSource::CreateParticleVAO()
 		0
 	);
 	glEnableVertexAttribArray(0);
+
+	glBindBuffer(GL_ARRAY_BUFFER, mTextureCoordsVBO);
+	glVertexAttribPointer(
+		1,
+		2, GL_FLOAT, GL_FALSE,
+		0,
+		0
+	);
+	glEnableVertexAttribArray(1);
 }
 
 void ParticleSource::SpawnParticle(int pIndex, float spread)
 {
-	mParticles[pIndex].life = 1;
+	mParticles[pIndex].life = 0.5;
+	mParticles[pIndex].Colour = { 1.f, 1.f, 1.f, 1.f };
 
 	float rndx = mDistribution(mRandomGenerator);
 	float rndy = mDistribution(mRandomGenerator);

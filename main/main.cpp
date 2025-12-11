@@ -713,7 +713,7 @@ int main() try
 	state.UI = &UI;
 
 	//Particle effect initialisation
-	ParticleSource pSource({ -32.55f, 0.6f, 2.f }, 100);
+	ParticleSource pSource({ -32.55f, 0.6f, 2.f }, 100, "assets/cw2/Particle.png");
 	state.pSource = &pSource;
 
 	OGL_CHECKPOINT_ALWAYS();
@@ -1363,16 +1363,24 @@ namespace
 		glDrawArraysInstanced( GL_TRIANGLES, 0, state.numSpaceShipVerts, state.spaceShipInstPtr->GetInstanceCount());
 
 		//Particles
+		glEnable(GL_BLEND);
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+		glDepthMask(GL_FALSE);
 		auto& progParticle = *state.progs[3];
 		glUseProgram(progParticle.programId());
 		GLint locProjPart = glGetUniformLocation(progParticle.programId(), "uProjCameraWorld");
+		GLint locColour = glGetUniformLocation(progParticle.programId(), "uColour");
 		GLint locOffset = glGetUniformLocation(progParticle.programId(), "uOffset");
 
-		state.pSource->UpdateParticles(5, 3.f);
-		//Mat44f particleProjection = projection * world2Camera * (make_translation(state.pSource->GetOrigin()) * world2CamFlat);
+		//state.pSource->SetOrigin(Vec3f(shipTransformList[0]));
+		state.pSource->UpdateParticles(2, 3.f, state.dt);
 		Mat44f particleProjection = projection * world2Camera * make_translation(state.pSource->GetOrigin()) * world2CamFlat;
 		glUniformMatrix4fv(locProjPart, 1, GL_TRUE, particleProjection.v);
+
+		//get verticies and texture
+		glBindVertexArray(state.pSource->ParticleVAO());
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, state.pSource->GetTexture());
 
 		std::vector<Particle> particles = state.pSource->GetParticles();
 		for (int i = 0; i < particles.size(); i++) 
@@ -1380,14 +1388,17 @@ namespace
 			if (particles[i].life > 0) 
 			{
 				glUniform3fv(locOffset, 1, &particles[i].Position.x);
-				glBindVertexArray(state.pSource->ParticleVAO());
+				glUniform4fv(locColour, 1, &particles[i].Colour.x);
 				glDrawArrays(GL_TRIANGLES, 0, 6);
-				glBindVertexArray(0);
+				
 			}
 			
 		}
-		
+		glDisable(GL_BLEND);
+		glDepthMask(GL_TRUE);
 
+		glBindVertexArray(0);
+		glBindTexture(GL_TEXTURE_2D, 0);
 	}
 
 

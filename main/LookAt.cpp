@@ -14,25 +14,9 @@ Mat44f MakeLookAt( const Vec3f& P, const Vec3f& D, const Vec3f& U, const Vec3f& 
 	return Axis * translation;
 }
 
-/*Mat44f MakeBillboardLookAt(Mat44f LookAt)
-{
-	Mat33f Look_At_upper = mat44_to_mat33(LookAt);
-	Mat33f I = transpose(Look_At_upper);
-	Mat44f R = kIdentity44f;
-	R[0, 0] = I[0, 0]; R[0, 1] = I[0, 1]; R[0, 2] = I[0, 2];
-	R[1, 0] = I[1, 0]; R[1, 1] = I[1, 1]; R[1, 2] = I[1, 2];
-	R[2, 0] = I[2, 0]; R[2, 1] = I[2, 1]; R[2, 2] = I[2, 2];
-
-	return R;
-
-}*/
 
 Mat44f MakeBillboardLookAt(const Vec3f& D, const Vec3f& U, const Vec3f& R)
 {
-	/*Mat44f Axis = { R[0], U[0], 0, 0,
-				   R[1], U[1], 0, 0,
-				   R[2], U[2], 1, 0,
-				   0,    0,    0,    1 };*/
 
 	Mat33f Axis = { R[0], R[1], R[2],
 				   U[0], U[1], U[2], 

@@ -1,8 +1,13 @@
 #version 430
 
-layout( location = 0 ) out vec3 oColour;
+in vec2 v2fTexCoord;
+in vec4 v2fColour;
+
+layout( location = 0 ) out vec4 oColour;
+
+layout( binding = 0 ) uniform sampler2D uTexture;
 
 void main()
 {
-	oColour = vec3(1.f, 0.f, 0.f);
+	oColour = (texture( uTexture, v2fTexCoord) * v2fColour);
 }

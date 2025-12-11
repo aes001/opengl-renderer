@@ -36,6 +36,7 @@ extern "C"
 #include "Light.hpp"
 #include "UIObject.hpp"
 #include "UIGroup.hpp"
+#include "Particle.hpp"
 
 namespace
 {
@@ -123,6 +124,7 @@ namespace
 		std::vector<Vec4f>* lightOriginalPositions;
 
 		UIGroup* UI;
+		ParticleSource* pSource;
 	};
 
 
@@ -278,9 +280,15 @@ int main() try
 		{ GL_FRAGMENT_SHADER, "assets/cw2/uiShader.frag" }
 	});
 
+	ShaderProgram progParticle({
+		{ GL_VERTEX_SHADER, "assets/cw2/particleShader.vert" },
+		{ GL_FRAGMENT_SHADER, "assets/cw2/particleShader.frag" }
+	});
+
 	state.progs.push_back(&prog);
 	state.progs.push_back(&prog2);
 	state.progs.push_back(&progUI);
+	state.progs.push_back(&progParticle);
 	auto last = Clock::now();
 
 #pragma region ModelLoad
@@ -512,7 +520,7 @@ int main() try
 
 	//lights: position, colour, intensity
 	PointLight l1 = { l1InitialTransform, { 0.8f, 0.77f, 0.72f, 1.f}, {0.15f, 0.f, 0.f} }; //under saucer light
-	PointLight l2 = { l2InitialTransform, { 0.988f, 0.1f, 0.1f, 1.f}, {0.1f, 0.f, 0.f} }; //naecell light
+	PointLight l2 = { l2InitialTransform, { 0.988f, 0.1f, 0.1f, 1.f}, {0.1f, 0.f, 0.f} }; //rear red light
 	PointLight l3 = { l3InitialTransform, { 0.1f, 0.1f, 0.9f, 1.f}, {0.2f, 0.f, 0.f} }; //bottom light
 	std::vector<PointLight> lights(N_LIGHTS);
 	lights[0] = l1;
@@ -703,6 +711,10 @@ int main() try
 	//UI initialisation
 	UIGroup UI = createUI(window);
 	state.UI = &UI;
+
+	//Particle effect initialisation
+	ParticleSource pSource({ -32.55f, 0.6f, 2.f }, 100);
+	state.pSource = &pSource;
 
 	OGL_CHECKPOINT_ALWAYS();
 
@@ -1249,6 +1261,9 @@ namespace
 										 aCamCtrl.cameraUp,
 										 aCamCtrl.cameraRight);
 
+		Mat44f world2CamFlat = MakeBillboardLookAt(aCamCtrl.cameraDirection, aCamCtrl.cameraUp,
+			aCamCtrl.cameraRight);
+
 
 		auto& prog = *(state.progs[0]);
 		glUseProgram( prog.programId() );
@@ -1334,7 +1349,6 @@ namespace
 		glDrawArraysInstanced( GL_TRIANGLES, 0, state.numLandingPadVerts, landingPadInstances.GetInstanceCount());
 
 
-
 		// Spaceship
 		std::vector<Mat44f> projectionList2 = state.spaceShipInstPtr->GetProjCameraWorldArray(projection, world2Camera);
 		glUniformMatrix4fv(locProj, (GLsizei) projectionList2.size(), GL_TRUE, projectionList2.data()[0].v );
@@ -1347,6 +1361,33 @@ namespace
 
 		glBindVertexArray( state.shipVAO );
 		glDrawArraysInstanced( GL_TRIANGLES, 0, state.numSpaceShipVerts, state.spaceShipInstPtr->GetInstanceCount());
+
+		//Particles
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+		auto& progParticle = *state.progs[3];
+		glUseProgram(progParticle.programId());
+		GLint locProjPart = glGetUniformLocation(progParticle.programId(), "uProjCameraWorld");
+		GLint locOffset = glGetUniformLocation(progParticle.programId(), "uOffset");
+
+		state.pSource->UpdateParticles(5, 3.f);
+		//Mat44f particleProjection = projection * world2Camera * (make_translation(state.pSource->GetOrigin()) * world2CamFlat);
+		Mat44f particleProjection = projection * world2Camera * make_translation(state.pSource->GetOrigin()) * world2CamFlat;
+		glUniformMatrix4fv(locProjPart, 1, GL_TRUE, particleProjection.v);
+
+		std::vector<Particle> particles = state.pSource->GetParticles();
+		for (int i = 0; i < particles.size(); i++) 
+		{
+			if (particles[i].life > 0) 
+			{
+				glUniform3fv(locOffset, 1, &particles[i].Position.x);
+				glBindVertexArray(state.pSource->ParticleVAO());
+				glDrawArrays(GL_TRIANGLES, 0, 6);
+				glBindVertexArray(0);
+			}
+			
+		}
+		
+
 	}
 
 

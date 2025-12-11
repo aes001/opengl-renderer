@@ -6,6 +6,7 @@
 
 
 #include "../vmlib/mat44.hpp"
+#include "../vmlib/mat33.hpp"
 #include "../vmlib/vec3.hpp"
 
 
@@ -15,6 +16,7 @@ Mat44f MakeLookAt(const Vec3f& P, const Vec3f& D, const Vec3f& U, const Vec3f& R
 
 Mat44f MakeOrthoProj(int const left, int const right, int const bottom, int const top, int const zNear, int const zFar);
 
-
+//Mat44f MakeBillboardLookAt(Mat44f LookAt);
+Mat44f MakeBillboardLookAt(const Vec3f& D, const Vec3f& U, const Vec3f& R);
 
 #endif // LOOK_AT_H

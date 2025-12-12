@@ -84,4 +84,39 @@ Mat33f mat44_to_mat33( Mat44f const& aM )
 	return ret;
 }
 
+inline
+Mat33f transpose(Mat33f const& aM) noexcept
+{
+	Mat33f ret;
+	for (std::size_t i = 0; i < 3; ++i)
+	{
+		for (std::size_t j = 0; j < 3; ++j)
+			ret[j, i] = aM[i, j];
+	}
+	return ret;
+}
+
+//Not our solution
+//https://stackoverflow.com/questions/983999/simple-3x3-matrix-inverse-code-c
+inline
+Mat33f inverse(Mat33f const& aM)
+{
+	double det = aM[0, 0] * (aM[1, 1] * aM[2, 2] - aM[2, 1] * aM[1, 2]) - aM[0, 1] * (aM[1, 0] * aM[2, 2] - aM[1, 2] * aM[2, 0]) + aM[0, 2] * (aM[1, 0] * aM[2, 1] - aM[1, 1] * aM[2, 0]);
+
+	float invdet = 1 / (float)det;
+
+	Mat33f minv; // inverse of aMatrix aM
+	minv[0, 0] = (aM[1, 1] * aM[2, 2] - aM[2, 1] * aM[1, 2]) * invdet;
+	minv[0, 1] = (aM[0, 2] * aM[2, 1] - aM[0, 1] * aM[2, 2]) * invdet;
+	minv[0, 2] = (aM[0, 1] * aM[1, 2] - aM[0, 2] * aM[1, 1]) * invdet;
+	minv[1, 0] = (aM[1, 2] * aM[2, 0] - aM[1, 0] * aM[2, 2]) * invdet;
+	minv[1, 1] = (aM[0, 0] * aM[2, 2] - aM[0, 2] * aM[2, 0]) * invdet;
+	minv[1, 2] = (aM[1, 0] * aM[0, 2] - aM[0, 0] * aM[1, 2]) * invdet;
+	minv[2, 0] = (aM[1, 0] * aM[2, 1] - aM[2, 0] * aM[1, 1]) * invdet;
+	minv[2, 1] = (aM[2, 0] * aM[0, 1] - aM[0, 0] * aM[2, 1]) * invdet;
+	minv[2, 2] = (aM[0, 0] * aM[1, 1] - aM[1, 0] * aM[0, 1]) * invdet;
+
+	return minv;
+}
+
 #endif // MAT33_HPP_61F3107B_CBE4_48DE_9F39_EA959B4BF694

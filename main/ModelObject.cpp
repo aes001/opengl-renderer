@@ -292,7 +292,7 @@ GLuint LoadTexture2D( char const* aPath )
 	stbi_set_flip_vertically_on_load( true );
 
 	int w, h, channels;
-	stbi_uc* ptr = stbi_load( aPath, &w, &h, &channels, 4 );
+	stbi_uc* ptr = stbi_load( aPath, &w, &h, &channels, STBI_rgb_alpha );
 	if( !ptr )
 	{
 		std::string errorMessage("Unable to load image " + std::string(aPath) + "\n");

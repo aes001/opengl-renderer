@@ -4,15 +4,17 @@
 #include <random>
 #include <string>
 
-ParticleSource::ParticleSource(Vec3f position, int n_particles, std::string tex_path)
+ParticleSource::ParticleSource(PSourceParams params, std::string tex_path)
 	: mVboVertices(0)
 	, mParticleVAO(0)
 	, mRandomGenerator(0)
 	, mDistribution(-1.f, 1.f)
 {
+	mParams = params;
 
-	mSourceOrigin = position;
-	for (int i = 0; i < n_particles; i++) 
+	mSourceOrigin = params.SourceOrigin;
+	mSourcePosition = params.SourceOrigin;
+	for (int i = 0; i < params.maxParticles; i++) 
 	{
 		mParticles.push_back(Particle());
 	}
@@ -24,22 +26,38 @@ ParticleSource::ParticleSource(Vec3f position, int n_particles, std::string tex_
 
 }
 
-void ParticleSource::UpdateParticles(int newParticles, float spread, float dt)
+void ParticleSource::UpdateParticles(float dt)
 {
 	//spawn particles
 	int spawned = 0;
-	for (int i = 0; i < mParticles.size() && spawned < newParticles; i++) {
-		if (mParticles[i].life <= 0) {
-			SpawnParticle(i, spread);
-			spawned++;
+
+	if (mActive)
+	{
+		for (int i = 0; i < mParticles.size() && spawned < mParams.spawnRate; i++) {
+
+			for (int j = 0; j < mParticles.size(); j++) {
+
+				if (mParticles[j].life <= 0) {
+					SpawnParticle(j, mParams.spread);
+					spawned++;
+					break;
+				}
+			}
+
 		}
 	}
+	
 
-
+	//update living particles
 	for (int i = 0; i < mParticles.size(); i++) 
 	{
 		mParticles[i].life -= dt;
-		mParticles[i].Colour.w -= dt * 2.f;
+		if (mParticles[i].life > 0) 
+		{
+			mParticles[i].Position -= dt * mParams.Velocity;
+			mParticles[i].Colour.w -= dt * mParams.fade;
+		}
+		
 	}
 
 }
@@ -65,9 +83,22 @@ const Vec3f ParticleSource::GetOrigin() const
 	return mSourceOrigin;
 }
 
-void  ParticleSource::SetOrigin(Vec3f newOrigin)
+void  ParticleSource::SetPosition(Vec3f newPosition, float dt)
 {
-	mSourceOrigin = newOrigin;
+	if (newPosition == mSourcePosition) 
+	{
+		mActive = false;
+		return;
+	}
+	mActive = true;
+	mParams.Velocity = newPosition - mSourcePosition;
+	UpdateParticles(dt);
+	mSourcePosition = newPosition;
+}
+
+const Vec3f ParticleSource::GetPosition() const
+{
+	return mSourcePosition;
 }
 
 void ParticleSource::CreateTextureCoordsVBO() 
@@ -123,12 +154,12 @@ void ParticleSource::CreateParticleVAO()
 
 void ParticleSource::SpawnParticle(int pIndex, float spread)
 {
-	mParticles[pIndex].life = 0.5;
-	mParticles[pIndex].Colour = { 1.f, 1.f, 1.f, 1.f };
+	mParticles[pIndex].life = mParams.lifeTime;
+	mParticles[pIndex].Colour = mParams.Colour;
 
 	float rndx = mDistribution(mRandomGenerator);
 	float rndy = mDistribution(mRandomGenerator);
 	float rndz = mDistribution(mRandomGenerator);
 
-	mParticles[pIndex].Position = { spread * rndx, spread * rndy, spread * rndz };
+	mParticles[pIndex].Position = Vec3f{ spread * rndx, spread * rndy, spread * rndz } + mSourcePosition;
 }

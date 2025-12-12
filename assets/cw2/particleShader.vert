@@ -16,6 +16,7 @@ void main()
 	v2fTexCoord = iTexCoord;
 	v2fColour = uColour;
 
-	float scale = 0.05;
-	gl_Position = uProjCameraWorld * (vec4((iPosition.xyz + uOffset.xyz) * scale, 1.f));
+	float scale = 0.2;
+	//gl_Position = uProjCameraWorld * (vec4((iPosition.xyz + uOffset.xyz) * scale, 1.f));
+	gl_Position = uProjCameraWorld * (vec4((iPosition.xyz) * scale, 1.f));
 }

@@ -20,12 +20,24 @@ struct Particle
 	}
 };
 
+struct PSourceParams 
+{
+	Vec4f Colour;
+	Vec3f Velocity;
+	Vec3f SourceOrigin;
+	float spread;
+	float lifeTime;
+	float fade;
+	int maxParticles;
+	int spawnRate;
+};
+
 class ParticleSource 
 {
 public:
-	explicit ParticleSource(Vec3f position, int n_particles, std::string tex_path);
+	explicit ParticleSource(PSourceParams params, std::string tex_path);
 	
-	void UpdateParticles(int newParticles, float spread, float dt);
+	void UpdateParticles(float dt);
 
 	std::vector<Particle> GetParticles();
 
@@ -35,7 +47,9 @@ public:
 
 	const Vec3f GetOrigin() const;
 
-	void SetOrigin(Vec3f newOrigin);
+	const Vec3f GetPosition() const;
+
+	void SetPosition(Vec3f newPosition, float dt);
 
 private:
 	void CreatePositionsVBO();
@@ -49,6 +63,7 @@ private:
 private:
 	std::vector<Particle> mParticles;
 	Vec3f mSourceOrigin;
+	Vec3f mSourcePosition;
 
 	GLuint mVboVertices;
 	GLuint mTextureCoordsVBO;
@@ -58,6 +73,8 @@ private:
 	std::default_random_engine mRandomGenerator;
 	std::uniform_real_distribution<float> mDistribution;
 
+	PSourceParams mParams;
+	bool mActive;
 };
 
 #endif

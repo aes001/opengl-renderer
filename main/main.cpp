@@ -80,7 +80,7 @@ namespace
 	{
 		std::vector<PointLight>* lights;
 		std::vector<ShaderProgram*> progs;
-		const Vec3f diffuseLight = { 0.729f, 0.808f, 0.92f }; //sky: 0.529f, 0.808f, 0.92f, warm: 0.9f, 0.9f, 0.6f
+		const Vec3f diffuseLight = { 0.729f, 0.808f, 0.92f }; //sky: 0.529f, 0.808f, 0.92f, warm: 0.9f, 0.9f, 0.6f, blue: 0.729f, 0.808f, 0.92f
 		Vec3f currentGlobalLight;
 
 		std::vector<KeyFramedFloat>* animatedFloatsPtr;
@@ -247,7 +247,7 @@ int main() try
 
 	glEnable( GL_FRAMEBUFFER_SRGB );
 	glEnable( GL_CULL_FACE );
-	glClearColor( 0.529f, 0.808f, 0.92f, 0.0f );
+	glClearColor( 0.05f, 0.05f, 0.1f, 0.0f ); //sky: 0.529f, 0.808f, 0.92f, 0.0f
 	glEnable( GL_DEPTH_TEST );
 
 	OGL_CHECKPOINT_ALWAYS();
@@ -520,8 +520,8 @@ int main() try
 
 	//lights: position, colour, intensity
 	PointLight l1 = { l1InitialTransform, { 0.8f, 0.77f, 0.72f, 1.f}, {0.15f, 0.f, 0.f} }; //under saucer light
-	PointLight l2 = { l2InitialTransform, { 0.988f, 0.1f, 0.1f, 1.f}, {0.1f, 0.f, 0.f} }; //rear red light
-	PointLight l3 = { l3InitialTransform, { 0.1f, 0.1f, 0.9f, 1.f}, {0.2f, 0.f, 0.f} }; //bottom light
+	PointLight l2 = { l2InitialTransform, { 0.1f, 0.1f, 0.9f, 1.f }, {0.1f, 0.f, 0.f} }; //rear light
+	PointLight l3 = { l3InitialTransform, { 0.988f, 0.1f, 0.1f, 1.f }, {0.2f, 0.f, 0.f} }; //bottom light 
 	std::vector<PointLight> lights(N_LIGHTS);
 	lights[0] = l1;
 	lights[1] = l2;
@@ -712,8 +712,20 @@ int main() try
 	UIGroup UI = createUI(window);
 	state.UI = &UI;
 
+	PSourceParams source1
+	{
+		.Colour = {1.f, 1.f, 1.f, 1.f},
+		.Velocity = {0.f, 0.f, 0.f},
+		.SourceOrigin = { -32.65f, 0.5f, 2.f },
+		.spread = 0.1f,
+		.lifeTime = 0.5f,
+		.fade = 2.f,
+		.maxParticles = 200,
+		.spawnRate = 2
+	};
+
 	//Particle effect initialisation
-	ParticleSource pSource({ -32.55f, 0.6f, 2.f }, 100, "assets/cw2/Particle.png");
+	ParticleSource pSource(source1, "assets/cw2/Particle.png");
 	state.pSource = &pSource;
 
 	OGL_CHECKPOINT_ALWAYS();
@@ -1324,16 +1336,16 @@ namespace
 
 		glUniform3fv(locLightDir, 1, &lightDir.x);
 		glUniform3f(locDiffuse,
-			state.currentGlobalLight[0],
-			state.currentGlobalLight[1],
-			state.currentGlobalLight[2]); // light diffuse
+					state.currentGlobalLight[0],
+					state.currentGlobalLight[1],
+					state.currentGlobalLight[2]); // light diffuse
 		glUniform3f(locAmbient, 0.05f, 0.05f, 0.05f); // light ambient
 		glUniform3f(locCamPos,
 					state.camControl[state.selectedCamera_topScreen]->cameraPos[0],
 					state.camControl[state.selectedCamera_topScreen]->cameraPos[1],
 					state.camControl[state.selectedCamera_topScreen]->cameraPos[2]);
 
-		//specular light uniforms
+		//point light uniforms
 		Vec3f spaceShipAnimatedPosition = state.spaceShipInstPtr->GetTransform(0).mPosition;
 		Vec4f spaceShipOffset = Vec3ToVec4(spaceShipAnimatedPosition - state.spaceShipInitialTransform.mPosition);
 		for(size_t i = 0; i < lights.size(); i++)
@@ -1372,21 +1384,23 @@ namespace
 		GLint locColour = glGetUniformLocation(progParticle.programId(), "uColour");
 		GLint locOffset = glGetUniformLocation(progParticle.programId(), "uOffset");
 
-		//state.pSource->SetOrigin(Vec3f(shipTransformList[0]));
-		state.pSource->UpdateParticles(2, 3.f, state.dt);
-		Mat44f particleProjection = projection * world2Camera * make_translation(state.pSource->GetOrigin()) * world2CamFlat;
-		glUniformMatrix4fv(locProjPart, 1, GL_TRUE, particleProjection.v);
-
+		//move source and update particles
+		state.pSource->SetPosition(state.pSource->GetOrigin() + Vec3f{ spaceShipOffset[0], spaceShipOffset[1], spaceShipOffset[2]}, state.dt);
+		//state.pSource->UpdateParticles(state.dt);
+		
 		//get verticies and texture
 		glBindVertexArray(state.pSource->ParticleVAO());
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, state.pSource->GetTexture());
 
+		//state.pSource->UpdateParticles(state.dt);
 		std::vector<Particle> particles = state.pSource->GetParticles();
 		for (int i = 0; i < particles.size(); i++) 
 		{
 			if (particles[i].life > 0) 
 			{
+				Mat44f particleProjection = projection * world2Camera * make_translation(particles[i].Position) * world2CamFlat;
+				glUniformMatrix4fv(locProjPart, 1, GL_TRUE, particleProjection.v);
 				glUniform3fv(locOffset, 1, &particles[i].Position.x);
 				glUniform4fv(locColour, 1, &particles[i].Colour.x);
 				glDrawArrays(GL_TRIANGLES, 0, 6);

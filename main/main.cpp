@@ -118,6 +118,11 @@ namespace
 
 		UIGroup* UI;
 		ParticleSource* pSource;
+
+		//Uniform ID vectors
+		std::vector<GLuint> prog2UniformIds;
+		std::vector<GLuint> progUniformIds;
+		std::vector<GLuint> progParticleUniformIds;
 	};
 
 
@@ -288,6 +293,31 @@ int main() try
 	state.progs.push_back(&progUI);
 	state.progs.push_back(&progParticle);
 	state.progs.push_back(&progFont);
+
+	//The following is a hackey method to avoid having to call glGetUniformLocation() during the render loop, we call them all now and store the values for later
+	std::vector<GLuint> progUIUniformIds;
+	progUIUniformIds.push_back(glGetUniformLocation(progUI.programId(), "inColour"));
+
+	std::vector<GLuint> progUniformIds;
+	progUniformIds.push_back(glGetUniformLocation(prog.programId(), "uCamPosition"));
+	state.progUniformIds = progUniformIds;
+
+	std::vector<GLuint> prog2UniformIds;
+	prog2UniformIds.push_back(glGetUniformLocation(prog2.programId(), "uProjCameraWorld"));
+	prog2UniformIds.push_back(glGetUniformLocation(prog2.programId(), "uModelTransform"));
+	prog2UniformIds.push_back(glGetUniformLocation(prog2.programId(), "uNormalTransform"));
+	prog2UniformIds.push_back(glGetUniformLocation(prog2.programId(), "uLightDir"));
+	prog2UniformIds.push_back(glGetUniformLocation(prog2.programId(), "uLightDiffuse"));
+	prog2UniformIds.push_back(glGetUniformLocation(prog2.programId(), "uSceneAmbient"));
+	prog2UniformIds.push_back(glGetUniformLocation(prog2.programId(), "uCamPosition"));
+	state.prog2UniformIds = prog2UniformIds;
+
+	std::vector<GLuint> progParticleUniformIds;
+	progParticleUniformIds.push_back(glGetUniformLocation(progParticle.programId(), "uProjCameraWorld"));
+	progParticleUniformIds.push_back(glGetUniformLocation(progParticle.programId(), "uColour"));
+	progParticleUniformIds.push_back(glGetUniformLocation(progParticle.programId(), "uOffset"));
+	state.progParticleUniformIds = progParticleUniformIds;
+
 	auto last = Clock::now();
 
 #pragma region ModelLoad
@@ -842,9 +872,8 @@ int main() try
 		{
 			glBindVertexArray(UI.getElementGPU(i).ArrayId());
 
-			GLint Colour = glGetUniformLocation(progUI.programId(), "inColour");
 			Vec4f element_colour = UI.getElement(i).getColour();
-			glUniform4fv(Colour, 1, &element_colour.x);
+			glUniform4fv(progUIUniformIds[0], 1, &element_colour.x);
 			glDrawArrays(GL_TRIANGLES, 0, static_cast<GLsizei>(UI.getElement(i).Vertices().size()));
 		}
 
@@ -1305,7 +1334,7 @@ namespace
 
 		auto& prog = *(state.progs[0]);
 		glUseProgram( prog.programId() );
-		GLint locCamPosTerrain = glGetUniformLocation(prog.programId(), "uCamPosition");
+		GLint locCamPosTerrain = state.progUniformIds[0];
 		Mat44f terrainProjectCamWorld = projection * world2Camera * kIdentity44f;
 		glUniformMatrix4fv(0, 1, GL_TRUE, terrainProjectCamWorld.v);
 
@@ -1342,15 +1371,15 @@ namespace
 		auto& landingPadInstances = *state.landingPadInstPtr;
 		glUseProgram( prog2.programId() );
 
-		GLint locProj        = glGetUniformLocation( prog2.programId(), "uProjCameraWorld" );
-		GLint locModelTrans  = glGetUniformLocation( prog2.programId(), "uModelTransform");
-		GLint locNormalTrans = glGetUniformLocation( prog2.programId(), "uNormalTransform");
-		GLint locLightDir    = glGetUniformLocation( prog2.programId(), "uLightDir" );
-		GLint locDiffuse     = glGetUniformLocation( prog2.programId(), "uLightDiffuse" );
-		GLint locAmbient     = glGetUniformLocation( prog2.programId(), "uSceneAmbient" );
+		GLint locProj        = state.prog2UniformIds[0];
+		GLint locModelTrans  = state.prog2UniformIds[1];
+		GLint locNormalTrans = state.prog2UniformIds[2];
+		GLint locLightDir    = state.prog2UniformIds[3];
+		GLint locDiffuse     = state.prog2UniformIds[4];
+		GLint locAmbient     = state.prog2UniformIds[5];
 
-		GLint locCamPos = glGetUniformLocation(prog2.programId(), "uCamPosition");
-		//get camera projections
+		GLint locCamPos = state.prog2UniformIds[6];
+		//get camera projection
 		std::vector<Mat44f> projectionList = landingPadInstances.GetProjCameraWorldArray(projection, world2Camera);
 		glUniformMatrix4fv(locProj, (GLsizei)projectionList.size(), GL_TRUE, projectionList.data()[0].v);
 		//get translations
@@ -1407,9 +1436,9 @@ namespace
 		glDepthMask(GL_FALSE);
 		auto& progParticle = *state.progs[3];
 		glUseProgram(progParticle.programId());
-		GLint locProjPart = glGetUniformLocation(progParticle.programId(), "uProjCameraWorld");
-		GLint locColour = glGetUniformLocation(progParticle.programId(), "uColour");
-		GLint locOffset = glGetUniformLocation(progParticle.programId(), "uOffset");
+		GLint locProjPart = state.progParticleUniformIds[0];
+		GLint locColour = state.progParticleUniformIds[1];
+		GLint locOffset = state.progParticleUniformIds[2];
 
 		//move source and update particles
 		

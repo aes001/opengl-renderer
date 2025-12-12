@@ -1,15 +1,16 @@
 #include "UIObject.hpp"
 #include <iostream>
 
+
 UIElement::UIElement(UIElementProperties properties)
 {
-	CalculateVerticies(properties.uiPosition, properties.uiWidth, properties.uiHeight, properties.uiBorderWidth);
+	CalculateVertices(properties.uiPosition, properties.uiWidth, properties.uiHeight, properties.uiBorderWidth);
 	currentColour = properties.uiColour;
 	elementProperties = properties;
 	CalculateBounds();
 }
 
-void UIElement::CalculateVerticies(Vec2f position, float width, float height, float borderWidth)
+void UIElement::CalculateVertices(Vec2f position, float width, float height, float borderWidth)
 {
 	std::vector<Vec2f> R;
 	std::vector<uint8_t> B;
@@ -18,7 +19,8 @@ void UIElement::CalculateVerticies(Vec2f position, float width, float height, fl
 	Vec2f UR = position + Vec2f{ width, height };
 	Vec2f LR = position + Vec2f{ width, 0.f };
 
-	if (borderWidth == 0.f) {
+	if (borderWidth == 0.f)
+	{
 		//triangle 1
 		R.push_back(UL);
 		R.push_back({ position });
@@ -150,6 +152,24 @@ void UIElement::TriggerCallbacks()
 }
 
 
+void UIElement::SetString(PITBStyleID aStyle, const std::string& aString)
+{
+	if (!uiButtonText)
+	{
+		float posTextCoordsX = (elementProperties.uiPosition.x + 1) / 2 + ((elementProperties.uiWidth) / 4 );
+		float posTextCoordsY = (((elementProperties.uiPosition.y * -1) + 1) / 2 ) - ((elementProperties.uiHeight) / 2 );
+		auto& text = PITBFontManager::Get().MakeText(aStyle, Vec2f{posTextCoordsX, posTextCoordsY}, aString);
+		uiButtonText = &text;
+	}
+}
+
+
+PITBText* UIElement::GetButtonTextPtr()
+{
+	return uiButtonText;
+}
+
+
 //GPU version of the class for loading an element into VBO's
 UIElementGPU::UIElementGPU(const UIElement& UI)
 	: uiVboPositions(0)
@@ -185,26 +205,13 @@ UIElementGPU& UIElementGPU::operator=(UIElementGPU&& other) noexcept
 		ReleaseBuffers();
 
 		uiVboPositions = std::exchange(other.uiVboPositions, 0);
+		uiVboBorderFlags = std::exchange(other.uiVboBorderFlags, 0);
+		uiVao = std::exchange(other.uiVao, 0);
 	}
 
 	return *this;
 }
 
-
-
-GLuint UIElementGPU::BufferId(uiBufferType bufferType) const
-{
-	GLuint ret = 0;
-
-	switch (bufferType)
-	{
-	case uiVboPositions_index:
-		ret = uiVboPositions;
-		break;
-	}
-
-	return ret;
-}
 
 GLuint UIElementGPU::ArrayId() const
 {
@@ -253,7 +260,9 @@ void UIElementGPU::ReleaseBuffers()
 {
 	glDeleteBuffers(1, &uiVboPositions);
 	glDeleteBuffers(1, &uiVboBorderFlags);
+	glDeleteVertexArrays(1, &uiVao);
 
 	uiVboPositions = 0;
 	uiVboBorderFlags = 0;
+	uiVao = 0;
 }

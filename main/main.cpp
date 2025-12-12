@@ -1,12 +1,3 @@
-#if defined(_WIN32) // alternative: ”#if defined(_MSC_VER)”
-extern "C"
-{
-	__declspec(dllexport) unsigned long NvOptimusEnablement = 1;
-	__declspec(dllexport) unsigned long AmdPowerXpressRequestHighPerformance = 1; // untested
-	// See https://stackoverflow.com/questions/17458803/amd-equivalent-to-nvoptimusenablement
-}
-#endif
-
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
@@ -36,6 +27,8 @@ extern "C"
 #include "Light.hpp"
 #include "UIObject.hpp"
 #include "UIGroup.hpp"
+
+#include "PITBFont.hpp"
 
 namespace
 {
@@ -278,9 +271,15 @@ int main() try
 		{ GL_FRAGMENT_SHADER, "assets/cw2/uiShader.frag" }
 	});
 
+	ShaderProgram progFont({
+		{ GL_VERTEX_SHADER, "assets/cw2/fontShader.vert" },
+		{ GL_FRAGMENT_SHADER, "assets/cw2/fontShader.frag" }
+	});
+
 	state.progs.push_back(&prog);
 	state.progs.push_back(&prog2);
 	state.progs.push_back(&progUI);
+	state.progs.push_back(&progFont);
 	auto last = Clock::now();
 
 #pragma region ModelLoad
@@ -701,8 +700,20 @@ int main() try
 	state.animatedFloatsPtr = &spaceShipAnimatedFloats;
 
 	//UI initialisation
+	PITBFontManager::Get().SetShaderProgram(&progFont);
+
 	UIGroup UI = createUI(window);
 	state.UI = &UI;
+
+	PITBFontManager& fm = PITBFontManager::Get();
+
+	PITBStyleID style1 = fm.MakeStyle("./assets/cw2/DroidSansMonoDotted.ttf", 0.03f, FonsRGBA(255, 0, 0, 255));
+	PITBText& spaceShipHeightText = fm.MakeText(style1, {0.f, 0.f}, "Space ship height:");
+
+	PITBStyleID styleBtnText = fm.MakeStyleDerived(style1, 0.03f, FonsRGBA(0, 0, 0, 255), FONS_ALIGN_CENTER | FONS_ALIGN_TOP);
+
+	UI.getElement(0).SetString(styleBtnText, "Play/Pause");
+	UI.getElement(1).SetString(styleBtnText, "Reset");
 
 	OGL_CHECKPOINT_ALWAYS();
 
@@ -806,11 +817,17 @@ int main() try
 			Vec4f element_colour = UI.getElement(i).getColour();
 			glUniform4fv(Colour, 1, &element_colour.x);
 			glDrawArrays(GL_TRIANGLES, 0, static_cast<GLsizei>(UI.getElement(i).Vertices().size()));
-
 		}
 
 		glDisable(GL_BLEND);
 		glEnable(GL_DEPTH_TEST);
+
+
+		// Update the text before the font system update
+		spaceShipHeightText.SetString("Spaceship height: {0:.2f} meters", spaceShipAnimatedPosition.y * 10.f);
+
+		// Update the font system
+		PITBFontManager::Get().Update(fbwidth, fbheight);
 
 
 		// Cleanup
@@ -1180,10 +1197,10 @@ namespace
 		UIElementProperties toggleAnimationBtn_prop
 		{
 			.uiColour = {0.1f, 0.9f, 0.1f, 0.5f},
-			.uiPosition = {-0.1f, -0.9},
-			.uiWidth = 0.15f,
+			.uiPosition = {-0.2f, -0.9},
+			.uiWidth = 0.25f,
 			.uiHeight = 0.2f,
-			.uiBorderWidth = 0.02f
+			.uiBorderWidth = 0.02f,
 		};
 
 		UIElement toggleAnimationBtn = UIElement(toggleAnimationBtn_prop);
@@ -1200,9 +1217,9 @@ namespace
 		{
 			.uiColour = {0.9f, 0.1f, 0.1f, 0.5f},
 			.uiPosition = {0.1f, -0.9},
-			.uiWidth = 0.15f,
+			.uiWidth = 0.25f,
 			.uiHeight = 0.2f,
-			.uiBorderWidth = 0.02f
+			.uiBorderWidth = 0.02f,
 		};
 
 		UIElement resetAnimationBtn = UIElement(resetAnimationBtn_prop2);

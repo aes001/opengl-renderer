@@ -10,6 +10,9 @@
 
 #include <vector>
 #include <functional>
+#include <string>
+
+#include "PITBFont.hpp"
 
 struct UIElementProperties
 {
@@ -38,9 +41,14 @@ public:
 
 	void InsertOnClickCallback(std::function<void()> cb);
 
+	void SetString(PITBStyleID aStyle, const std::string& aString);
+
+	PITBText* GetButtonTextPtr();
+
+
 
 private:
-	void CalculateVerticies(Vec2f position, float width, float height, float borderWidth);
+	void CalculateVertices(Vec2f position, float width, float height, float borderWidth);
 	void CalculateBounds();
 	void TriggerCallbacks();
 
@@ -52,6 +60,7 @@ private:
 	UIElementProperties elementProperties;
 	float LB, RB, BB, UB; //Left Bound, Right Bound, Bottom Bount, Upper Bound
 	int lastUpdateState;
+	PITBText* uiButtonText = nullptr;
 
 };
 
@@ -70,13 +79,11 @@ public:
 	~UIElementGPU();
 
 	UIElementGPU( const UIElementGPU& ) = delete;
-	UIElementGPU& operator=( const UIElementGPU& ) noexcept;
+	UIElementGPU& operator=( const UIElementGPU& ) = delete;
 
 	UIElementGPU(UIElementGPU&& other) noexcept;
 	UIElementGPU& operator=(UIElementGPU&& other) noexcept;
 
-
-	GLuint BufferId(uiBufferType bufferType) const;
 	GLuint ArrayId() const;
 
 private:

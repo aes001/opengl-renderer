@@ -520,8 +520,8 @@ int main() try
 
 	//lights: position, colour, intensity
 	PointLight l1 = { l1InitialTransform, { 0.8f, 0.77f, 0.72f, 1.f}, {0.15f, 0.f, 0.f} }; //under saucer light
-	PointLight l2 = { l2InitialTransform, { 0.1f, 0.1f, 0.9f, 1.f }, {0.1f, 0.f, 0.f} }; //rear light
-	PointLight l3 = { l3InitialTransform, { 0.988f, 0.1f, 0.1f, 1.f }, {0.2f, 0.f, 0.f} }; //bottom light 
+	PointLight l2 = { l2InitialTransform, { 0.988f, 0.1f, 0.1f, 1.f }, {0.1f, 0.f, 0.f} }; //rear light
+	PointLight l3 = { l3InitialTransform, { 0.1f, 0.1f, 0.9f, 1.f }, {0.2f, 0.f, 0.f} }; //bottom light 
 
 	std::vector<PointLight> lights(N_LIGHTS);
 	lights[0] = l1;

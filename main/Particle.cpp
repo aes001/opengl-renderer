@@ -11,7 +11,7 @@ ParticleSource::ParticleSource(PSourceParams params, std::string tex_path)
 	, mDistribution(-1.f, 1.f)
 {
 	mParams = params;
-
+	mActive = false;
 	mSourceOrigin = params.SourceOrigin;
 	mSourcePosition = params.SourceOrigin;
 	for (int i = 0; i < params.maxParticles; i++) 
@@ -45,19 +45,20 @@ void ParticleSource::UpdateParticles(float dt)
 			}
 
 		}
-	}
+	
 	
 
-	//update living particles
-	for (int i = 0; i < mParticles.size(); i++) 
-	{
-		mParticles[i].life -= dt;
-		if (mParticles[i].life > 0) 
+		//update living particles
+		for (int i = 0; i < mParticles.size(); i++) 
 		{
-			mParticles[i].Position -= dt * mParams.Velocity;
-			mParticles[i].Colour.w -= dt * mParams.fade;
-		}
+			mParticles[i].life -= dt;
+			if (mParticles[i].life > 0) 
+			{
+				mParticles[i].Position -= dt * mParams.Velocity;
+				mParticles[i].Colour.w -= dt * mParams.fade;
+			}
 		
+		}
 	}
 
 }
@@ -67,6 +68,13 @@ std::vector<Particle> ParticleSource::GetParticles()
 	return mParticles;
 }
 
+void ParticleSource::DeleteParticles()
+{
+	for (int i = 0; i < mParticles.size(); i++) 
+	{
+		mParticles[i].life = 0;
+	}
+}
 
 const GLuint ParticleSource::ParticleVAO() const
 {
@@ -87,18 +95,28 @@ void  ParticleSource::SetPosition(Vec3f newPosition, float dt)
 {
 	if (newPosition == mSourcePosition) 
 	{
-		mActive = false;
+		//mActive = false;
 		return;
 	}
-	mActive = true;
+	//mActive = true;
 	mParams.Velocity = newPosition - mSourcePosition;
-	UpdateParticles(dt);
+	//UpdateParticles(dt);
 	mSourcePosition = newPosition;
 }
 
 const Vec3f ParticleSource::GetPosition() const
 {
 	return mSourcePosition;
+}
+
+void ParticleSource::ToggleActive()
+{
+	mActive = !mActive;
+}
+
+void ParticleSource::SetActive(bool active) 
+{
+	mActive = active;
 }
 
 void ParticleSource::CreateTextureCoordsVBO() 

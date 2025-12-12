@@ -41,6 +41,8 @@ public:
 
 	std::vector<Particle> GetParticles();
 
+	void DeleteParticles();
+
 	const GLuint ParticleVAO() const;
 
 	const GLuint GetTexture() const;
@@ -51,6 +53,10 @@ public:
 
 	void SetPosition(Vec3f newPosition, float dt);
 
+	void ToggleActive();
+
+	void SetActive(bool active);
+
 private:
 	void CreatePositionsVBO();
 
@@ -59,6 +65,7 @@ private:
 	void CreateParticleVAO();
 
 	void SpawnParticle(int pIndex, float spread);
+
 
 private:
 	std::vector<Particle> mParticles;

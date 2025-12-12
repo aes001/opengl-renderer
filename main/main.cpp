@@ -896,6 +896,7 @@ namespace
 				{
 					anim.Toggle();
 				}
+				state->pSource->ToggleActive();
 			}
 
 			if( GLFW_KEY_R == aKey && GLFW_PRESS == aAction )
@@ -904,6 +905,9 @@ namespace
 				{
 					anim.Stop();
 				}
+				state->pSource->SetActive(false);
+				state->pSource->DeleteParticles();
+				
 			}
 
 			//key actions
@@ -1217,6 +1221,7 @@ namespace
 				{
 					anim.Toggle();
 				}
+				state->pSource->ToggleActive();
 			});
 		elements.push_back(toggleAnimationBtn);
 
@@ -1236,6 +1241,8 @@ namespace
 				{
 					anim.Stop();
 				}
+				state->pSource->SetActive(false);
+				state->pSource->DeleteParticles();
 			});
 		elements.push_back(resetAnimationBtn);
 
@@ -1386,14 +1393,13 @@ namespace
 
 		//move source and update particles
 		state.pSource->SetPosition(state.pSource->GetOrigin() + Vec3f{ spaceShipOffset[0], spaceShipOffset[1], spaceShipOffset[2]}, state.dt);
-		//state.pSource->UpdateParticles(state.dt);
 		
 		//get verticies and texture
 		glBindVertexArray(state.pSource->ParticleVAO());
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, state.pSource->GetTexture());
 
-		//state.pSource->UpdateParticles(state.dt);
+		state.pSource->UpdateParticles(state.dt);
 		std::vector<Particle> particles = state.pSource->GetParticles();
 		for (int i = 0; i < particles.size(); i++) 
 		{

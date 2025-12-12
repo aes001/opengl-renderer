@@ -717,7 +717,7 @@ int main() try
 	{
 		.Colour = {1.f, 1.f, 1.f, 1.f},
 		.Velocity = {0.f, 0.f, 0.f},
-		.SourceOrigin = { -30.65f, 0.5f, 2.f }, //-32.65f, 0.5f, 2.f
+		.SourceOrigin = { -31.60f, -0.1f, 2.1f }, //-32.65f, 0.5f, 2.f
 		.spread = 0.1f,
 		.lifeTime = 0.5f,
 		.fade = 2.f,

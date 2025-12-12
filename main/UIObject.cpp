@@ -1,5 +1,6 @@
 #include "UIObject.hpp"
 #include <iostream>
+#include <utility>
 
 
 UIElement::UIElement(UIElementProperties properties)
@@ -47,7 +48,7 @@ void UIElement::CalculateVertices(Vec2f position, float width, float height, flo
 		R.insert(R.end(), { UR + Vec2f{-b, -b}, LR + Vec2f{-b, b}, UR + Vec2f{0, -b} }); //right border
 		R.insert(R.end(), { UR + Vec2f{0, -b}, LR + Vec2f{-b, b}, LR + Vec2f{0, b},  });
 
-		for (int i = 0; i < R.size(); i++)
+		for (size_t i = 0; i < R.size(); i++)
 		{
 			B.push_back(1);
 		}

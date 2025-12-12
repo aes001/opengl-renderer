@@ -100,7 +100,7 @@ ModelObject::ModelObject( const char* objPath, uint32_t loadFlags /*= kLoadEvery
 
 	vertNormalsList.resize(mVertices.size());
 
-	for (int i = 0; i < mVertices.size()-3; i+=3) {
+	for (size_t i = 0; i < mVertices.size()-3; i+=3) {
 		Vec3f normal = CalculateNormal(mVertices[i], mVertices[i + 1], mVertices[i + 2]);
 
 		vertNormalsList[i].emplace_back(normal);
@@ -108,11 +108,10 @@ ModelObject::ModelObject( const char* objPath, uint32_t loadFlags /*= kLoadEvery
 		vertNormalsList[i + 2].emplace_back(normal);
 	}
 
-	for( int i = 0; i < vertNormalsList.size(); i++ )
+	for( size_t i = 0; i < vertNormalsList.size(); i++ )
 	{
 		Vec3f sum = { 0.f, 0.f, 0.f };
-		Vec3f denom = { 0.f, 0.f, 0.f };
-		for( int j = 0; j < vertNormalsList[i].size(); j++ )
+		for( size_t j = 0; j < vertNormalsList[i].size(); j++ )
 		{
 			sum += vertNormalsList[i][j];
 		}
@@ -127,12 +126,12 @@ ModelObject::ModelObject( const char* objPath, uint32_t loadFlags /*= kLoadEvery
 
 
 ModelObject::ModelObject( std::vector<Vec3f> positions, std::vector<Vec3f> normals, std::vector<Vec3f> colours, std::vector<Vec3f> specular, std::vector<float> shininess )
-	: mVertices( std::move(positions) )
-	, mNormals( std::move(normals) )
+	: mLoadFlags ( kLoadVertexColour | kLoadVertexSpecular | kLoadVertexShininess )
+	, mVertices( std::move(positions) )
 	, mVertexColours( std::move(colours) )
 	, mVertexSpecular( std::move(specular) )
 	, mVertexShininess( std::move(shininess) )
-	, mLoadFlags ( kLoadVertexColour | kLoadVertexSpecular | kLoadVertexShininess )
+	, mNormals( std::move(normals) )
 {
 }
 
@@ -287,7 +286,7 @@ GLuint LoadTexture2D( char const* aPath )
 	assert( aPath );
 
 	// Load image first
-	// This may fail (e.g., image does not exist), so there’s no point in
+	// This may fail (e.g., image does not exist), so thereï¿½s no point in
 	// allocating OpenGL resources ahead of time.
 	stbi_set_flip_vertically_on_load( true );
 
@@ -630,7 +629,7 @@ std::vector<std::array<float, 3>> ObjectInstanceGroup::GetTranslationArray()
 		ret.push_back(std::move(transTemp));
 	}
 
-	return std::move(ret);
+	return ret;
 }
 
 std::vector<Mat33f> ObjectInstanceGroup::GetNormalUpdateArray() const

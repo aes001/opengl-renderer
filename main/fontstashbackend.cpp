@@ -94,6 +94,7 @@ int internal_fsb__renderCreate(void* uptr, int width, int height)
 		glBindVertexArray( 0 );
 		glBindBuffer( GL_ARRAY_BUFFER, 0 );
 	}
+	return 1;
 }
 
 

@@ -564,9 +564,12 @@ int main() try
 			KeyFramedFloat& spaceShipYKF = ret.emplace_back();
 			KeyFramedFloat& spaceShipZKF = ret.emplace_back();
 
-			KeyFramedFloat& spaceShipXRotKF = ret.emplace_back();
+			// We are keeping the X and Z rotation key frames even though we don't
+			// end up using them because we need to keep the key framed float vector
+			// to be 6 values.
+			[[maybe_unused]] KeyFramedFloat& spaceShipXRotKF = ret.emplace_back();
 			KeyFramedFloat& spaceShipYRotKF = ret.emplace_back();
-			KeyFramedFloat& spaceShipZRotKF = ret.emplace_back();
+			[[maybe_unused]] KeyFramedFloat& spaceShipZRotKF = ret.emplace_back();
 
 
 			// Initial Transforms
@@ -1124,9 +1127,6 @@ namespace
 			.mShininess = 300.f
 		};
 
-		Vec3f base_colour = { 0.7f, 0.7f, 0.7f };
-		Vec3f red = { 0.8f, 0.1f, 0.1f };
-
 		Transform bodyTransform{
 			.mPosition{1.6f, 0.9f, 1.f},
 			.mRotation{0.f, 0.f, 0.f},
@@ -1426,7 +1426,7 @@ namespace
 
 		state.pSource->UpdateParticles(state.dt);
 		std::vector<Particle> particles = state.pSource->GetParticles();
-		for (int i = 0; i < particles.size(); i++) 
+		for (size_t i = 0; i < particles.size(); i++) 
 		{
 			if (particles[i].life > 0) 
 			{

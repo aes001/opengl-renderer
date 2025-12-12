@@ -16,7 +16,7 @@ struct Particle
 	float life;
 
 	Particle()
-		: Position(0.f), life(0.f), Colour({1.f, 1.f, 1.f, 1.f}) {
+		: Position(0.f), Colour({1.f, 1.f, 1.f, 1.f}), life(0.f) {
 	}
 };
 

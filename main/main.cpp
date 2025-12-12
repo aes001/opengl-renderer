@@ -6,6 +6,7 @@
 #include <typeinfo>
 #include <stdexcept>
 #include <algorithm>
+#include <iostream>
 
 #include <cstdlib>
 
@@ -30,6 +31,10 @@
 #include "Particle.hpp"
 
 #include "PITBFont.hpp"
+
+#define BENCHMARK_MODE_1 0
+#define BENCHMARK_TASK_2 0
+#define BENCHMARK_INSTANCING 0 // unfinished do not use
 
 namespace
 {
@@ -324,7 +329,17 @@ int main() try
 
 
 
+#if BENCHMARK_TASK_2
+	GLuint terrainLoadCPUGPU = 0;
+	glGenQueries( 1, &terrainLoadCPUGPU );
+	glQueryCounter( terrainLoadCPUGPU, GL_TIMESTAMP );
 
+	GLuint64 time = 0;
+
+	glGetQueryObjectui64v(terrainLoadCPUGPU, GL_QUERY_RESULT, &time);
+	std::cout << "ts 1" << time << "\n"; 
+#endif // BENCHMARK_TASK_2
+	
 	uint32_t terrainLoadFlags = kLoadTextureCoords | kLoadVertexColour;
 	ModelObject terrain( "assets/cw2/parlahti.obj", terrainLoadFlags );
 	state.numTerrainVerts = static_cast<GLsizei>( terrain.Vertices().size() );
@@ -378,7 +393,27 @@ int main() try
 	);
 	glEnableVertexAttribArray(3);
 
+#if BENCHMARK_TASK_2
+	GLuint terrainLoadCPUGPU2 = 0;
+	glGenQueries( 1, &terrainLoadCPUGPU2 );
+	glQueryCounter( terrainLoadCPUGPU2, GL_TIMESTAMP );
 
+	GLuint64 time2 = 0;
+
+	glGetQueryObjectui64v(terrainLoadCPUGPU2, GL_QUERY_RESULT, &time2);
+	std::cout << "TerrainModelLoadingTime: " << time2 - time << "\n"; 
+#endif // BENCHMARK_TASK_2
+
+
+#if BENCHMARK_INSTANCING
+	GLuint landingPadBM = 0;
+	glGenQueries( 1, &landingPadBM );
+	glQueryCounter( landingPadBM, GL_TIMESTAMP );
+
+	GLuint64 ts = 0;
+
+	glGetQueryObjectui64v(landingPadBM, GL_QUERY_RESULT, &ts);
+#endif // BENCHMARK_INSTANCING
 	// Second Model
 	uint32_t landingPadLoadFlags = kLoadVertexColour
 								 | kLoadVertexAmbient
@@ -446,6 +481,17 @@ int main() try
 		0
 	);
 	glEnableVertexAttribArray(4);
+
+#if BENCHMARK_INSTANCING
+	GLuint landingPadBM2 = 0;
+	glGenQueries( 1, &landingPadBM2 );
+	glQueryCounter( landingPadBM2, GL_TIMESTAMP );
+
+	GLuint64 ts2 = 0;
+
+	glGetQueryObjectui64v(landingPadBM2, GL_QUERY_RESULT, &ts2);
+	std::cout << "landing pad loading time: " << ts-ts2 << "\n"; 
+#endif // BENCHMARK_INSTANCING
 
 	// Combine the two model objects
 	ModelObject spaceShipModel = create_ship();
@@ -776,6 +822,12 @@ int main() try
 
 	OGL_CHECKPOINT_ALWAYS();
 
+#if BENCHMARK_MODE_1
+		std::vector<GLuint64> renderResults;
+		int renderCount = 0;
+		GLuint64 avgTime = 0;
+#endif // BENCHMARK_MODE_1
+
 	// Main loop
 	while( !glfwWindowShouldClose( window ) )
 	{
@@ -835,9 +887,14 @@ int main() try
 		updateCamera(state);
 
 
-		// Draw scene
+		// Draw scene		GLuint64 avgTime = 0;
 		OGL_CHECKPOINT_DEBUG();
 
+#if BENCHMARK_MODE_1
+		GLuint fullRender = 0;
+		glGenQueries( 1, &fullRender );
+		glBeginQuery(GL_TIME_ELAPSED, fullRender);
+#endif // BENCHMARK_MODE_1
 		// actual rendering here
 		if (!state.isSplitScreen)
 		{
@@ -887,6 +944,19 @@ int main() try
 		// Update the font system
 		PITBFontManager::Get().Update(fbwidth, fbheight);
 
+#if BENCHMARK_MODE_1
+		glEndQuery(GL_TIME_ELAPSED);
+		GLuint64 elapsedTimeNs = 0;
+		glGetQueryObjectui64v( fullRender, GL_QUERY_RESULT, &elapsedTimeNs);
+		if(renderCount == 0)
+			avgTime = elapsedTimeNs;
+		else{
+			avgTime += elapsedTimeNs;
+			avgTime = avgTime/2;
+		}
+		renderCount++;
+
+#endif // BENCHMARK_MODE_1
 
 		// Cleanup
 		glBindVertexArray( 0 );
@@ -899,10 +969,15 @@ int main() try
 	}
 
 	// Cleanup.
-	for( auto& prog : state.progs )
-	{
-		prog = nullptr;
-	}
+	// for( auto& prog : state.progs )
+	// {
+	// 	prog = nullptr;
+	// }
+
+#if BENCHMARK_MODE_1
+	std::cout << "Average time: " << uint64_t(avgTime) << "\n";
+#endif // BENCHMARK_MODE_1
+
 
 	return 0;
 }
@@ -1322,6 +1397,18 @@ namespace
 			);
 		}
 
+#if BENCHMARK_TASK_2
+		static uint64_t averageTime = 0;
+		static int renderCount = 0;
+
+		GLuint terrainLoadCPUGPU3 = 0;
+		glGenQueries(1, &terrainLoadCPUGPU3);
+		glQueryCounter( terrainLoadCPUGPU3, GL_TIMESTAMP );
+
+		GLuint64 ts1 = 0;
+
+		glGetQueryObjectui64v(terrainLoadCPUGPU3, GL_QUERY_RESULT, &ts1);
+#endif // BENCHMARK_TASK_2
 
 		Mat44f world2Camera = MakeLookAt(aCamCtrl.cameraPos,
 										 aCamCtrl.cameraDirection,
@@ -1364,6 +1451,40 @@ namespace
 
 		glBindTexture( GL_TEXTURE_2D, 0 );
 
+
+#if BENCHMARK_TASK_2
+		GLuint terrainLoadCPUGPU4 = 0;
+		glGenQueries(1, &terrainLoadCPUGPU4);
+		glQueryCounter( terrainLoadCPUGPU4, GL_TIMESTAMP );
+
+		GLuint64 ts2 = 0;
+		glGetQueryObjectui64v(terrainLoadCPUGPU4, GL_QUERY_RESULT, &ts2);
+
+		if( renderCount == 0)
+		{
+			renderCount++;
+			averageTime += ts2-ts1;
+		}
+		else
+		{
+			averageTime = (averageTime + (ts2-ts1)) / 2;
+		}
+		
+		std::cout << "Average time: " << averageTime << "\n";
+#endif // BENCHMARK_TASK_2
+
+#if BENCHMARK_INSTANCING
+		static uint64_t averageTime = 0;
+		static int renderCount = 0;
+
+		GLuint landingPadBM3 = 0;
+		glGenQueries(1, &landingPadBM3);
+		glQueryCounter( landingPadBM3, GL_TIMESTAMP );
+
+		GLuint64 ts1 = 0;
+
+		glGetQueryObjectui64v(landingPadBM3, GL_QUERY_RESULT, &ts1);
+#endif // BENCHMARK_INSTANCING
 
 
 		// Render the landing pad
@@ -1415,6 +1536,28 @@ namespace
 
 		glBindVertexArray( state.landingPadVAO );
 		glDrawArraysInstanced( GL_TRIANGLES, 0, state.numLandingPadVerts, landingPadInstances.GetInstanceCount());
+
+
+#if BENCHMARK_INSTANCING
+		GLuint landingPadBM4 = 0;
+		glGenQueries(1, &landingPadBM4);
+		glQueryCounter( landingPadBM4, GL_TIMESTAMP );
+
+		GLuint64 ts2 = 0;
+		glGetQueryObjectui64v(landingPadBM4, GL_QUERY_RESULT, &ts2);
+
+		if( renderCount == 0)
+		{
+			renderCount++;
+			averageTime += ts2-ts1;
+		}
+		else
+		{
+			averageTime = (averageTime + (ts2-ts1)) / 2;
+		}
+		
+		std::cout << "Landing pad average time: " << averageTime << "\n";
+#endif // BENCHMARK_INSTANCING
 
 
 		// Spaceship

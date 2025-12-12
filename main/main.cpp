@@ -36,6 +36,7 @@ extern "C"
 #include "Light.hpp"
 #include "UIObject.hpp"
 #include "UIGroup.hpp"
+#include "Particle.hpp"
 
 namespace
 {
@@ -79,7 +80,7 @@ namespace
 	{
 		std::vector<PointLight>* lights;
 		std::vector<ShaderProgram*> progs;
-		const Vec3f diffuseLight = { 0.729f, 0.808f, 0.92f }; //sky: 0.529f, 0.808f, 0.92f, warm: 0.9f, 0.9f, 0.6f
+		const Vec3f diffuseLight = { 0.729f, 0.808f, 0.92f }; //sky: 0.529f, 0.808f, 0.92f, warm: 0.9f, 0.9f, 0.6f, blue: 0.729f, 0.808f, 0.92f
 		Vec3f currentGlobalLight;
 
 		std::vector<KeyFramedFloat>* animatedFloatsPtr;
@@ -123,6 +124,7 @@ namespace
 		std::vector<Vec4f>* lightOriginalPositions;
 
 		UIGroup* UI;
+		ParticleSource* pSource;
 	};
 
 
@@ -245,7 +247,7 @@ int main() try
 
 	glEnable( GL_FRAMEBUFFER_SRGB );
 	glEnable( GL_CULL_FACE );
-	glClearColor( 0.529f, 0.808f, 0.92f, 0.0f );
+	glClearColor( 0.05f, 0.05f, 0.1f, 0.0f ); //sky: 0.529f, 0.808f, 0.92f, 0.0f
 	glEnable( GL_DEPTH_TEST );
 
 	OGL_CHECKPOINT_ALWAYS();
@@ -278,9 +280,15 @@ int main() try
 		{ GL_FRAGMENT_SHADER, "assets/cw2/uiShader.frag" }
 	});
 
+	ShaderProgram progParticle({
+		{ GL_VERTEX_SHADER, "assets/cw2/particleShader.vert" },
+		{ GL_FRAGMENT_SHADER, "assets/cw2/particleShader.frag" }
+	});
+
 	state.progs.push_back(&prog);
 	state.progs.push_back(&prog2);
 	state.progs.push_back(&progUI);
+	state.progs.push_back(&progParticle);
 	auto last = Clock::now();
 
 #pragma region ModelLoad
@@ -512,8 +520,9 @@ int main() try
 
 	//lights: position, colour, intensity
 	PointLight l1 = { l1InitialTransform, { 0.8f, 0.77f, 0.72f, 1.f}, {0.15f, 0.f, 0.f} }; //under saucer light
-	PointLight l2 = { l2InitialTransform, { 0.988f, 0.1f, 0.1f, 1.f}, {0.1f, 0.f, 0.f} }; //naecell light
-	PointLight l3 = { l3InitialTransform, { 0.1f, 0.1f, 0.9f, 1.f}, {0.2f, 0.f, 0.f} }; //bottom light
+	PointLight l2 = { l2InitialTransform, { 0.988f, 0.1f, 0.1f, 1.f }, {0.1f, 0.f, 0.f} }; //rear light
+	PointLight l3 = { l3InitialTransform, { 0.1f, 0.1f, 0.9f, 1.f }, {0.2f, 0.f, 0.f} }; //bottom light 
+
 	std::vector<PointLight> lights(N_LIGHTS);
 	lights[0] = l1;
 	lights[1] = l2;
@@ -704,6 +713,23 @@ int main() try
 	UIGroup UI = createUI(window);
 	state.UI = &UI;
 
+	PSourceParams source1
+	{
+		.Colour = {1.f, 1.f, 1.f, 1.f},
+		.Velocity = {0.f, 0.f, 0.f},
+		.SourceOrigin = { -31.60f, -0.1f, 2.1f }, //-32.65f, 0.5f, 2.f
+		.spread = 0.1f,
+		.lifeTime = 0.5f,
+		.fade = 2.f,
+		.maxParticles = 200,
+		.spawnRate = 2
+	};
+
+	//Particle effect initialisation
+	ParticleSource pSource(source1, "assets/cw2/Particle.png");
+	pSource.SetRelativePosition(pSource.GetOrigin() - state.spaceShipInitialTransform.mPosition);
+	state.pSource = &pSource;
+
 	OGL_CHECKPOINT_ALWAYS();
 
 	// Main loop
@@ -872,6 +898,7 @@ namespace
 				{
 					anim.Toggle();
 				}
+				state->pSource->ToggleActive();
 			}
 
 			if( GLFW_KEY_R == aKey && GLFW_PRESS == aAction )
@@ -880,6 +907,9 @@ namespace
 				{
 					anim.Stop();
 				}
+				state->pSource->SetActive(false);
+				state->pSource->DeleteParticles();
+				
 			}
 
 			//key actions
@@ -1193,6 +1223,7 @@ namespace
 				{
 					anim.Toggle();
 				}
+				state->pSource->ToggleActive();
 			});
 		elements.push_back(toggleAnimationBtn);
 
@@ -1212,6 +1243,8 @@ namespace
 				{
 					anim.Stop();
 				}
+				state->pSource->SetActive(false);
+				state->pSource->DeleteParticles();
 			});
 		elements.push_back(resetAnimationBtn);
 
@@ -1248,6 +1281,9 @@ namespace
 										 aCamCtrl.cameraDirection,
 										 aCamCtrl.cameraUp,
 										 aCamCtrl.cameraRight);
+
+		Mat44f world2CamFlat = MakeBillboardLookAt(aCamCtrl.cameraDirection, aCamCtrl.cameraUp,
+			aCamCtrl.cameraRight);
 
 
 		auto& prog = *(state.progs[0]);
@@ -1309,17 +1345,18 @@ namespace
 
 		glUniform3fv(locLightDir, 1, &lightDir.x);
 		glUniform3f(locDiffuse,
-			state.currentGlobalLight[0],
-			state.currentGlobalLight[1],
-			state.currentGlobalLight[2]); // light diffuse
+					state.currentGlobalLight[0],
+					state.currentGlobalLight[1],
+					state.currentGlobalLight[2]); // light diffuse
 		glUniform3f(locAmbient, 0.05f, 0.05f, 0.05f); // light ambient
 		glUniform3f(locCamPos,
 					state.camControl[state.selectedCamera_topScreen]->cameraPos[0],
 					state.camControl[state.selectedCamera_topScreen]->cameraPos[1],
 					state.camControl[state.selectedCamera_topScreen]->cameraPos[2]);
 
-		//specular light uniforms
+		//point light uniforms
 		Vec3f spaceShipAnimatedPosition = state.spaceShipInstPtr->GetTransform(0).mPosition;
+		Vec3f spaceShipAnimatedRotation = state.spaceShipInstPtr->GetTransform(0).mRotation;
 		Vec4f spaceShipOffset = Vec3ToVec4(spaceShipAnimatedPosition - state.spaceShipInitialTransform.mPosition);
 		for(size_t i = 0; i < lights.size(); i++)
 		{
@@ -1334,7 +1371,6 @@ namespace
 		glDrawArraysInstanced( GL_TRIANGLES, 0, state.numLandingPadVerts, landingPadInstances.GetInstanceCount());
 
 
-
 		// Spaceship
 		std::vector<Mat44f> projectionList2 = state.spaceShipInstPtr->GetProjCameraWorldArray(projection, world2Camera);
 		glUniformMatrix4fv(locProj, (GLsizei) projectionList2.size(), GL_TRUE, projectionList2.data()[0].v );
@@ -1347,6 +1383,50 @@ namespace
 
 		glBindVertexArray( state.shipVAO );
 		glDrawArraysInstanced( GL_TRIANGLES, 0, state.numSpaceShipVerts, state.spaceShipInstPtr->GetInstanceCount());
+
+		//Particles
+		glEnable(GL_BLEND);
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+		glDepthMask(GL_FALSE);
+		auto& progParticle = *state.progs[3];
+		glUseProgram(progParticle.programId());
+		GLint locProjPart = glGetUniformLocation(progParticle.programId(), "uProjCameraWorld");
+		GLint locColour = glGetUniformLocation(progParticle.programId(), "uColour");
+		GLint locOffset = glGetUniformLocation(progParticle.programId(), "uOffset");
+
+		//move source and update particles
+		
+
+		Mat44f spaceShipRotMat = make_rotation_y(spaceShipAnimatedRotation.y);
+		Vec3f sourcePos = Vec4ToVec3(spaceShipRotMat * Vec3ToVec4(state.pSource->GetRelativePosition())) + spaceShipAnimatedPosition;
+
+		state.pSource->SetPosition(sourcePos);
+
+		//get verticies and texture
+		glBindVertexArray(state.pSource->ParticleVAO());
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, state.pSource->GetTexture());
+
+		state.pSource->UpdateParticles(state.dt);
+		std::vector<Particle> particles = state.pSource->GetParticles();
+		for (int i = 0; i < particles.size(); i++) 
+		{
+			if (particles[i].life > 0) 
+			{
+				Mat44f particleProjection = projection * world2Camera * make_translation(particles[i].Position) * world2CamFlat;
+				glUniformMatrix4fv(locProjPart, 1, GL_TRUE, particleProjection.v);
+				glUniform3fv(locOffset, 1, &particles[i].Position.x);
+				glUniform4fv(locColour, 1, &particles[i].Colour.x);
+				glDrawArrays(GL_TRIANGLES, 0, 6);
+				
+			}
+			
+		}
+		glDisable(GL_BLEND);
+		glDepthMask(GL_TRUE);
+
+		glBindVertexArray(0);
+		glBindTexture(GL_TEXTURE_2D, 0);
 	}
 
 

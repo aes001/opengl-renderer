@@ -1,15 +1,16 @@
 #include "UIObject.hpp"
 #include <iostream>
 
-UIElement::UIElement(UIElementProperties properties) 
+
+UIElement::UIElement(UIElementProperties properties)
 {
-	CalculateVerticies(properties.uiPosition, properties.uiWidth, properties.uiHeight, properties.uiBorderWidth);
+	CalculateVertices(properties.uiPosition, properties.uiWidth, properties.uiHeight, properties.uiBorderWidth);
 	currentColour = properties.uiColour;
 	elementProperties = properties;
 	CalculateBounds();
 }
 
-void UIElement::CalculateVerticies(Vec2f position, float width, float height, float borderWidth)
+void UIElement::CalculateVertices(Vec2f position, float width, float height, float borderWidth)
 {
 	std::vector<Vec2f> R;
 	std::vector<uint8_t> B;
@@ -18,7 +19,8 @@ void UIElement::CalculateVerticies(Vec2f position, float width, float height, fl
 	Vec2f UR = position + Vec2f{ width, height };
 	Vec2f LR = position + Vec2f{ width, 0.f };
 
-	if (borderWidth == 0.f) {
+	if (borderWidth == 0.f)
+	{
 		//triangle 1
 		R.push_back(UL);
 		R.push_back({ position });
@@ -28,7 +30,7 @@ void UIElement::CalculateVerticies(Vec2f position, float width, float height, fl
 		R.push_back({ position });
 		R.push_back(LR);
 	}
-	else 
+	else
 	{
 		float b = borderWidth;
 		Vec2f p = position;
@@ -73,7 +75,7 @@ void UIElement::CalculateBounds()
 
 }
 
-void UIElement::checkUpdates(Vec2f mousePos, int mouseStatus) 
+void UIElement::checkUpdates(Vec2f mousePos, int mouseStatus)
 {
 
 	//check if within bounds of element
@@ -82,20 +84,20 @@ void UIElement::checkUpdates(Vec2f mousePos, int mouseStatus)
 	{
 		currentColour = elementProperties.uiColour / 2.f;
 
-		if (mouseStatus == GLFW_PRESS) 
+		if (mouseStatus == GLFW_PRESS)
 		{
 			currentColour = elementProperties.uiColour / 4.f;
 
-			if (lastUpdateState != mouseStatus) 
+			if (lastUpdateState != mouseStatus)
 			{
 				TriggerCallbacks();
 			}
-			
+
 		}
 		lastUpdateState = mouseStatus;
 
 	}
-	else 
+	else
 	{
 		currentColour = elementProperties.uiColour;
 	}
@@ -150,8 +152,26 @@ void UIElement::TriggerCallbacks()
 }
 
 
+void UIElement::SetString(PITBStyleID aStyle, const std::string& aString)
+{
+	if (!uiButtonText)
+	{
+		float posTextCoordsX = (elementProperties.uiPosition.x + 1) / 2 + ((elementProperties.uiWidth) / 4 );
+		float posTextCoordsY = (((elementProperties.uiPosition.y * -1) + 1) / 2 ) - ((elementProperties.uiHeight) / 2 );
+		auto& text = PITBFontManager::Get().MakeText(aStyle, Vec2f{posTextCoordsX, posTextCoordsY}, aString);
+		uiButtonText = &text;
+	}
+}
+
+
+PITBText* UIElement::GetButtonTextPtr()
+{
+	return uiButtonText;
+}
+
+
 //GPU version of the class for loading an element into VBO's
-UIElementGPU::UIElementGPU(const UIElement& UI) 
+UIElementGPU::UIElementGPU(const UIElement& UI)
 	: uiVboPositions(0)
 	, uiVboBorderFlags(0)
 	, uiVao(0)
@@ -185,33 +205,20 @@ UIElementGPU& UIElementGPU::operator=(UIElementGPU&& other) noexcept
 		ReleaseBuffers();
 
 		uiVboPositions = std::exchange(other.uiVboPositions, 0);
+		uiVboBorderFlags = std::exchange(other.uiVboBorderFlags, 0);
+		uiVao = std::exchange(other.uiVao, 0);
 	}
 
 	return *this;
 }
 
 
-
-GLuint UIElementGPU::BufferId(uiBufferType bufferType) const
-{
-	GLuint ret = 0;
-
-	switch (bufferType)
-	{
-	case uiVboPositions_index:
-		ret = uiVboPositions;
-		break;
-	}
-
-	return ret;
-}
-
-GLuint UIElementGPU::ArrayId() const 
+GLuint UIElementGPU::ArrayId() const
 {
 	return uiVao;
 }
 
-void UIElementGPU::CreatePositionsVBO(const UIElement& UI) 
+void UIElementGPU::CreatePositionsVBO(const UIElement& UI)
 {
 	glGenBuffers(1, &uiVboPositions);
 	glBindBuffer(GL_ARRAY_BUFFER, uiVboPositions);
@@ -226,7 +233,7 @@ void UIElementGPU::CreateBorderFlagsVBO(const UIElement& UI)
 }
 
 
-void UIElementGPU::CreateVAO() 
+void UIElementGPU::CreateVAO()
 {
 	glGenVertexArrays(1, &uiVao);
 	glBindVertexArray(uiVao);
@@ -249,11 +256,13 @@ void UIElementGPU::CreateVAO()
 	glEnableVertexAttribArray(1);
 }
 
-void UIElementGPU::ReleaseBuffers() 
+void UIElementGPU::ReleaseBuffers()
 {
 	glDeleteBuffers(1, &uiVboPositions);
 	glDeleteBuffers(1, &uiVboBorderFlags);
+	glDeleteVertexArrays(1, &uiVao);
 
 	uiVboPositions = 0;
 	uiVboBorderFlags = 0;
+	uiVao = 0;
 }

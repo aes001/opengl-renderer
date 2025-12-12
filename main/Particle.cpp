@@ -76,6 +76,8 @@ void ParticleSource::DeleteParticles()
 	}
 }
 
+//getters and setters
+
 const GLuint ParticleSource::ParticleVAO() const
 {
 	return mParticleVAO;
@@ -91,22 +93,29 @@ const Vec3f ParticleSource::GetOrigin() const
 	return mSourceOrigin;
 }
 
-void  ParticleSource::SetPosition(Vec3f newPosition, float dt)
+void  ParticleSource::SetPosition(Vec3f newPosition)
 {
 	if (newPosition == mSourcePosition) 
 	{
-		//mActive = false;
 		return;
 	}
-	//mActive = true;
 	mParams.Velocity = newPosition - mSourcePosition;
-	//UpdateParticles(dt);
 	mSourcePosition = newPosition;
 }
 
 const Vec3f ParticleSource::GetPosition() const
 {
 	return mSourcePosition;
+}
+
+const Vec3f ParticleSource::GetRelativePosition() const
+{
+	return mRelativePositionToParent;
+}
+
+void ParticleSource::SetRelativePosition(Vec3f relPos)
+{
+	mRelativePositionToParent = relPos;
 }
 
 void ParticleSource::ToggleActive()
@@ -119,6 +128,8 @@ void ParticleSource::SetActive(bool active)
 	mActive = active;
 }
 
+
+//private functions
 void ParticleSource::CreateTextureCoordsVBO() 
 {
 	Vec2f LL = { 0.f, 0.f};

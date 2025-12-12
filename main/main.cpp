@@ -522,6 +522,7 @@ int main() try
 	PointLight l1 = { l1InitialTransform, { 0.8f, 0.77f, 0.72f, 1.f}, {0.15f, 0.f, 0.f} }; //under saucer light
 	PointLight l2 = { l2InitialTransform, { 0.1f, 0.1f, 0.9f, 1.f }, {0.1f, 0.f, 0.f} }; //rear light
 	PointLight l3 = { l3InitialTransform, { 0.988f, 0.1f, 0.1f, 1.f }, {0.2f, 0.f, 0.f} }; //bottom light 
+
 	std::vector<PointLight> lights(N_LIGHTS);
 	lights[0] = l1;
 	lights[1] = l2;
@@ -716,7 +717,7 @@ int main() try
 	{
 		.Colour = {1.f, 1.f, 1.f, 1.f},
 		.Velocity = {0.f, 0.f, 0.f},
-		.SourceOrigin = { -32.65f, 0.5f, 2.f },
+		.SourceOrigin = { -30.65f, 0.5f, 2.f }, //-32.65f, 0.5f, 2.f
 		.spread = 0.1f,
 		.lifeTime = 0.5f,
 		.fade = 2.f,
@@ -726,6 +727,7 @@ int main() try
 
 	//Particle effect initialisation
 	ParticleSource pSource(source1, "assets/cw2/Particle.png");
+	pSource.SetRelativePosition(pSource.GetOrigin() - state.spaceShipInitialTransform.mPosition);
 	state.pSource = &pSource;
 
 	OGL_CHECKPOINT_ALWAYS();
@@ -1354,6 +1356,7 @@ namespace
 
 		//point light uniforms
 		Vec3f spaceShipAnimatedPosition = state.spaceShipInstPtr->GetTransform(0).mPosition;
+		Vec3f spaceShipAnimatedRotation = state.spaceShipInstPtr->GetTransform(0).mRotation;
 		Vec4f spaceShipOffset = Vec3ToVec4(spaceShipAnimatedPosition - state.spaceShipInitialTransform.mPosition);
 		for(size_t i = 0; i < lights.size(); i++)
 		{
@@ -1392,8 +1395,13 @@ namespace
 		GLint locOffset = glGetUniformLocation(progParticle.programId(), "uOffset");
 
 		//move source and update particles
-		state.pSource->SetPosition(state.pSource->GetOrigin() + Vec3f{ spaceShipOffset[0], spaceShipOffset[1], spaceShipOffset[2]}, state.dt);
 		
+
+		Mat44f spaceShipRotMat = make_rotation_y(spaceShipAnimatedRotation.y);
+		Vec3f sourcePos = Vec4ToVec3(spaceShipRotMat * Vec3ToVec4(state.pSource->GetRelativePosition())) + spaceShipAnimatedPosition;
+
+		state.pSource->SetPosition(sourcePos);
+
 		//get verticies and texture
 		glBindVertexArray(state.pSource->ParticleVAO());
 		glActiveTexture(GL_TEXTURE0);

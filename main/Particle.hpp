@@ -43,6 +43,7 @@ public:
 
 	void DeleteParticles();
 
+	//getters and setters
 	const GLuint ParticleVAO() const;
 
 	const GLuint GetTexture() const;
@@ -51,7 +52,11 @@ public:
 
 	const Vec3f GetPosition() const;
 
-	void SetPosition(Vec3f newPosition, float dt);
+	const Vec3f GetRelativePosition() const;
+
+	void SetRelativePosition(Vec3f relPos);
+
+	void SetPosition(Vec3f newPosition);
 
 	void ToggleActive();
 
@@ -71,6 +76,7 @@ private:
 	std::vector<Particle> mParticles;
 	Vec3f mSourceOrigin;
 	Vec3f mSourcePosition;
+	Vec3f mRelativePositionToParent; //whatever parent you decide (in this case ship)
 
 	GLuint mVboVertices;
 	GLuint mTextureCoordsVBO;

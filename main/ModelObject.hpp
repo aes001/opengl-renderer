@@ -113,8 +113,7 @@ enum eBufferType : size_t
 	kVboVertexShininess,
 	kVboNormals,
 	kVboTextureCoords,
-	kDiffuseTexture,
-	kBufferTypeCount
+	kDiffuseTexture
 };
 
 

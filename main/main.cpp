@@ -6,6 +6,7 @@
 #include <typeinfo>
 #include <stdexcept>
 #include <algorithm>
+#include <iostream>
 
 #include <cstdlib>
 
@@ -30,6 +31,10 @@
 #include "Particle.hpp"
 
 #include "PITBFont.hpp"
+
+#define BENCHMARK_MODE_1 0
+#define BENCHMARK_TASK_2 0
+#define BENCHMARK_INSTANCING 0 // unfinished do not use
 
 namespace
 {
@@ -118,6 +123,11 @@ namespace
 
 		UIGroup* UI;
 		ParticleSource* pSource;
+
+		//Uniform ID vectors
+		std::vector<GLuint> prog2UniformIds;
+		std::vector<GLuint> progUniformIds;
+		std::vector<GLuint> progParticleUniformIds;
 	};
 
 
@@ -288,13 +298,48 @@ int main() try
 	state.progs.push_back(&progUI);
 	state.progs.push_back(&progParticle);
 	state.progs.push_back(&progFont);
+
+	//The following is a hackey method to avoid having to call glGetUniformLocation() during the render loop, we call them all now and store the values for later
+	std::vector<GLuint> progUIUniformIds;
+	progUIUniformIds.push_back(glGetUniformLocation(progUI.programId(), "inColour"));
+
+	std::vector<GLuint> progUniformIds;
+	progUniformIds.push_back(glGetUniformLocation(prog.programId(), "uCamPosition"));
+	state.progUniformIds = progUniformIds;
+
+	std::vector<GLuint> prog2UniformIds;
+	prog2UniformIds.push_back(glGetUniformLocation(prog2.programId(), "uProjCameraWorld"));
+	prog2UniformIds.push_back(glGetUniformLocation(prog2.programId(), "uModelTransform"));
+	prog2UniformIds.push_back(glGetUniformLocation(prog2.programId(), "uNormalTransform"));
+	prog2UniformIds.push_back(glGetUniformLocation(prog2.programId(), "uLightDir"));
+	prog2UniformIds.push_back(glGetUniformLocation(prog2.programId(), "uLightDiffuse"));
+	prog2UniformIds.push_back(glGetUniformLocation(prog2.programId(), "uSceneAmbient"));
+	prog2UniformIds.push_back(glGetUniformLocation(prog2.programId(), "uCamPosition"));
+	state.prog2UniformIds = prog2UniformIds;
+
+	std::vector<GLuint> progParticleUniformIds;
+	progParticleUniformIds.push_back(glGetUniformLocation(progParticle.programId(), "uProjCameraWorld"));
+	progParticleUniformIds.push_back(glGetUniformLocation(progParticle.programId(), "uColour"));
+	progParticleUniformIds.push_back(glGetUniformLocation(progParticle.programId(), "uOffset"));
+	state.progParticleUniformIds = progParticleUniformIds;
+
 	auto last = Clock::now();
 
 #pragma region ModelLoad
 
 
 
+#if BENCHMARK_TASK_2
+	GLuint terrainLoadCPUGPU = 0;
+	glGenQueries( 1, &terrainLoadCPUGPU );
+	glQueryCounter( terrainLoadCPUGPU, GL_TIMESTAMP );
 
+	GLuint64 time = 0;
+
+	glGetQueryObjectui64v(terrainLoadCPUGPU, GL_QUERY_RESULT, &time);
+	std::cout << "ts 1" << time << "\n"; 
+#endif // BENCHMARK_TASK_2
+	
 	uint32_t terrainLoadFlags = kLoadTextureCoords | kLoadVertexColour;
 	ModelObject terrain( "assets/cw2/parlahti.obj", terrainLoadFlags );
 	state.numTerrainVerts = static_cast<GLsizei>( terrain.Vertices().size() );
@@ -348,7 +393,27 @@ int main() try
 	);
 	glEnableVertexAttribArray(3);
 
+#if BENCHMARK_TASK_2
+	GLuint terrainLoadCPUGPU2 = 0;
+	glGenQueries( 1, &terrainLoadCPUGPU2 );
+	glQueryCounter( terrainLoadCPUGPU2, GL_TIMESTAMP );
 
+	GLuint64 time2 = 0;
+
+	glGetQueryObjectui64v(terrainLoadCPUGPU2, GL_QUERY_RESULT, &time2);
+	std::cout << "TerrainModelLoadingTime: " << time2 - time << "\n"; 
+#endif // BENCHMARK_TASK_2
+
+
+#if BENCHMARK_INSTANCING
+	GLuint landingPadBM = 0;
+	glGenQueries( 1, &landingPadBM );
+	glQueryCounter( landingPadBM, GL_TIMESTAMP );
+
+	GLuint64 ts = 0;
+
+	glGetQueryObjectui64v(landingPadBM, GL_QUERY_RESULT, &ts);
+#endif // BENCHMARK_INSTANCING
 	// Second Model
 	uint32_t landingPadLoadFlags = kLoadVertexColour
 								 | kLoadVertexAmbient
@@ -416,6 +481,17 @@ int main() try
 		0
 	);
 	glEnableVertexAttribArray(4);
+
+#if BENCHMARK_INSTANCING
+	GLuint landingPadBM2 = 0;
+	glGenQueries( 1, &landingPadBM2 );
+	glQueryCounter( landingPadBM2, GL_TIMESTAMP );
+
+	GLuint64 ts2 = 0;
+
+	glGetQueryObjectui64v(landingPadBM2, GL_QUERY_RESULT, &ts2);
+	std::cout << "landing pad loading time: " << ts-ts2 << "\n"; 
+#endif // BENCHMARK_INSTANCING
 
 	// Combine the two model objects
 	ModelObject spaceShipModel = create_ship();
@@ -564,9 +640,12 @@ int main() try
 			KeyFramedFloat& spaceShipYKF = ret.emplace_back();
 			KeyFramedFloat& spaceShipZKF = ret.emplace_back();
 
-			KeyFramedFloat& spaceShipXRotKF = ret.emplace_back();
+			// We are keeping the X and Z rotation key frames even though we don't
+			// end up using them because we need to keep the key framed float vector
+			// to be 6 values.
+			[[maybe_unused]] KeyFramedFloat& spaceShipXRotKF = ret.emplace_back();
 			KeyFramedFloat& spaceShipYRotKF = ret.emplace_back();
-			KeyFramedFloat& spaceShipZRotKF = ret.emplace_back();
+			[[maybe_unused]] KeyFramedFloat& spaceShipZRotKF = ret.emplace_back();
 
 
 			// Initial Transforms
@@ -743,6 +822,12 @@ int main() try
 
 	OGL_CHECKPOINT_ALWAYS();
 
+#if BENCHMARK_MODE_1
+		std::vector<GLuint64> renderResults;
+		int renderCount = 0;
+		GLuint64 avgTime = 0;
+#endif // BENCHMARK_MODE_1
+
 	// Main loop
 	while( !glfwWindowShouldClose( window ) )
 	{
@@ -802,9 +887,14 @@ int main() try
 		updateCamera(state);
 
 
-		// Draw scene
+		// Draw scene		GLuint64 avgTime = 0;
 		OGL_CHECKPOINT_DEBUG();
 
+#if BENCHMARK_MODE_1
+		GLuint fullRender = 0;
+		glGenQueries( 1, &fullRender );
+		glBeginQuery(GL_TIME_ELAPSED, fullRender);
+#endif // BENCHMARK_MODE_1
 		// actual rendering here
 		if (!state.isSplitScreen)
 		{
@@ -839,9 +929,8 @@ int main() try
 		{
 			glBindVertexArray(UI.getElementGPU(i).ArrayId());
 
-			GLint Colour = glGetUniformLocation(progUI.programId(), "inColour");
 			Vec4f element_colour = UI.getElement(i).getColour();
-			glUniform4fv(Colour, 1, &element_colour.x);
+			glUniform4fv(progUIUniformIds[0], 1, &element_colour.x);
 			glDrawArrays(GL_TRIANGLES, 0, static_cast<GLsizei>(UI.getElement(i).Vertices().size()));
 		}
 
@@ -855,6 +944,19 @@ int main() try
 		// Update the font system
 		PITBFontManager::Get().Update(fbwidth, fbheight);
 
+#if BENCHMARK_MODE_1
+		glEndQuery(GL_TIME_ELAPSED);
+		GLuint64 elapsedTimeNs = 0;
+		glGetQueryObjectui64v( fullRender, GL_QUERY_RESULT, &elapsedTimeNs);
+		if(renderCount == 0)
+			avgTime = elapsedTimeNs;
+		else{
+			avgTime += elapsedTimeNs;
+			avgTime = avgTime/2;
+		}
+		renderCount++;
+
+#endif // BENCHMARK_MODE_1
 
 		// Cleanup
 		glBindVertexArray( 0 );
@@ -867,10 +969,15 @@ int main() try
 	}
 
 	// Cleanup.
-	for( auto& prog : state.progs )
-	{
-		prog = nullptr;
-	}
+	// for( auto& prog : state.progs )
+	// {
+	// 	prog = nullptr;
+	// }
+
+#if BENCHMARK_MODE_1
+	std::cout << "Average time: " << uint64_t(avgTime) << "\n";
+#endif // BENCHMARK_MODE_1
+
 
 	return 0;
 }
@@ -1124,9 +1231,6 @@ namespace
 			.mShininess = 300.f
 		};
 
-		Vec3f base_colour = { 0.7f, 0.7f, 0.7f };
-		Vec3f red = { 0.8f, 0.1f, 0.1f };
-
 		Transform bodyTransform{
 			.mPosition{1.6f, 0.9f, 1.f},
 			.mRotation{0.f, 0.f, 0.f},
@@ -1293,6 +1397,18 @@ namespace
 			);
 		}
 
+#if BENCHMARK_TASK_2
+		static uint64_t averageTime = 0;
+		static int renderCount = 0;
+
+		GLuint terrainLoadCPUGPU3 = 0;
+		glGenQueries(1, &terrainLoadCPUGPU3);
+		glQueryCounter( terrainLoadCPUGPU3, GL_TIMESTAMP );
+
+		GLuint64 ts1 = 0;
+
+		glGetQueryObjectui64v(terrainLoadCPUGPU3, GL_QUERY_RESULT, &ts1);
+#endif // BENCHMARK_TASK_2
 
 		Mat44f world2Camera = MakeLookAt(aCamCtrl.cameraPos,
 										 aCamCtrl.cameraDirection,
@@ -1305,7 +1421,7 @@ namespace
 
 		auto& prog = *(state.progs[0]);
 		glUseProgram( prog.programId() );
-		GLint locCamPosTerrain = glGetUniformLocation(prog.programId(), "uCamPosition");
+		GLint locCamPosTerrain = state.progUniformIds[0];
 		Mat44f terrainProjectCamWorld = projection * world2Camera * kIdentity44f;
 		glUniformMatrix4fv(0, 1, GL_TRUE, terrainProjectCamWorld.v);
 
@@ -1336,21 +1452,55 @@ namespace
 		glBindTexture( GL_TEXTURE_2D, 0 );
 
 
+#if BENCHMARK_TASK_2
+		GLuint terrainLoadCPUGPU4 = 0;
+		glGenQueries(1, &terrainLoadCPUGPU4);
+		glQueryCounter( terrainLoadCPUGPU4, GL_TIMESTAMP );
+
+		GLuint64 ts2 = 0;
+		glGetQueryObjectui64v(terrainLoadCPUGPU4, GL_QUERY_RESULT, &ts2);
+
+		if( renderCount == 0)
+		{
+			renderCount++;
+			averageTime += ts2-ts1;
+		}
+		else
+		{
+			averageTime = (averageTime + (ts2-ts1)) / 2;
+		}
+		
+		std::cout << "Average time: " << averageTime << "\n";
+#endif // BENCHMARK_TASK_2
+
+#if BENCHMARK_INSTANCING
+		static uint64_t averageTime = 0;
+		static int renderCount = 0;
+
+		GLuint landingPadBM3 = 0;
+		glGenQueries(1, &landingPadBM3);
+		glQueryCounter( landingPadBM3, GL_TIMESTAMP );
+
+		GLuint64 ts1 = 0;
+
+		glGetQueryObjectui64v(landingPadBM3, GL_QUERY_RESULT, &ts1);
+#endif // BENCHMARK_INSTANCING
+
 
 		// Render the landing pad
 		auto& prog2 = *state.progs[1];
 		auto& landingPadInstances = *state.landingPadInstPtr;
 		glUseProgram( prog2.programId() );
 
-		GLint locProj        = glGetUniformLocation( prog2.programId(), "uProjCameraWorld" );
-		GLint locModelTrans  = glGetUniformLocation( prog2.programId(), "uModelTransform");
-		GLint locNormalTrans = glGetUniformLocation( prog2.programId(), "uNormalTransform");
-		GLint locLightDir    = glGetUniformLocation( prog2.programId(), "uLightDir" );
-		GLint locDiffuse     = glGetUniformLocation( prog2.programId(), "uLightDiffuse" );
-		GLint locAmbient     = glGetUniformLocation( prog2.programId(), "uSceneAmbient" );
+		GLint locProj        = state.prog2UniformIds[0];
+		GLint locModelTrans  = state.prog2UniformIds[1];
+		GLint locNormalTrans = state.prog2UniformIds[2];
+		GLint locLightDir    = state.prog2UniformIds[3];
+		GLint locDiffuse     = state.prog2UniformIds[4];
+		GLint locAmbient     = state.prog2UniformIds[5];
 
-		GLint locCamPos = glGetUniformLocation(prog2.programId(), "uCamPosition");
-		//get camera projections
+		GLint locCamPos = state.prog2UniformIds[6];
+		//get camera projection
 		std::vector<Mat44f> projectionList = landingPadInstances.GetProjCameraWorldArray(projection, world2Camera);
 		glUniformMatrix4fv(locProj, (GLsizei)projectionList.size(), GL_TRUE, projectionList.data()[0].v);
 		//get translations
@@ -1388,6 +1538,28 @@ namespace
 		glDrawArraysInstanced( GL_TRIANGLES, 0, state.numLandingPadVerts, landingPadInstances.GetInstanceCount());
 
 
+#if BENCHMARK_INSTANCING
+		GLuint landingPadBM4 = 0;
+		glGenQueries(1, &landingPadBM4);
+		glQueryCounter( landingPadBM4, GL_TIMESTAMP );
+
+		GLuint64 ts2 = 0;
+		glGetQueryObjectui64v(landingPadBM4, GL_QUERY_RESULT, &ts2);
+
+		if( renderCount == 0)
+		{
+			renderCount++;
+			averageTime += ts2-ts1;
+		}
+		else
+		{
+			averageTime = (averageTime + (ts2-ts1)) / 2;
+		}
+		
+		std::cout << "Landing pad average time: " << averageTime << "\n";
+#endif // BENCHMARK_INSTANCING
+
+
 		// Spaceship
 		std::vector<Mat44f> projectionList2 = state.spaceShipInstPtr->GetProjCameraWorldArray(projection, world2Camera);
 		glUniformMatrix4fv(locProj, (GLsizei) projectionList2.size(), GL_TRUE, projectionList2.data()[0].v );
@@ -1407,9 +1579,9 @@ namespace
 		glDepthMask(GL_FALSE);
 		auto& progParticle = *state.progs[3];
 		glUseProgram(progParticle.programId());
-		GLint locProjPart = glGetUniformLocation(progParticle.programId(), "uProjCameraWorld");
-		GLint locColour = glGetUniformLocation(progParticle.programId(), "uColour");
-		GLint locOffset = glGetUniformLocation(progParticle.programId(), "uOffset");
+		GLint locProjPart = state.progParticleUniformIds[0];
+		GLint locColour = state.progParticleUniformIds[1];
+		GLint locOffset = state.progParticleUniformIds[2];
 
 		//move source and update particles
 		
@@ -1426,7 +1598,7 @@ namespace
 
 		state.pSource->UpdateParticles(state.dt);
 		std::vector<Particle> particles = state.pSource->GetParticles();
-		for (int i = 0; i < particles.size(); i++) 
+		for (size_t i = 0; i < particles.size(); i++) 
 		{
 			if (particles[i].life > 0) 
 			{

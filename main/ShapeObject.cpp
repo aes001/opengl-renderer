@@ -35,7 +35,7 @@ ModelObject MakeCylinder( bool aCapped, std::size_t aSubdivs, Transform aPreTran
 		float y = std::cos( angle );
 		float z = std::sin( angle );
 
-		// Two triangles (= 3*2 positions) create one segment of the cylinder’s shell.
+		// Two triangles (= 3*2 positions) create one segment of the cylinderï¿½s shell.
 		pos.emplace_back( Vec3f{ 0.f, prevY, prevZ } );
 		pos.emplace_back( Vec3f{ 0.f, y, z } );
 		pos.emplace_back( Vec3f{ 1.f, prevY, prevZ } );
@@ -72,7 +72,7 @@ ModelObject MakeCylinder( bool aCapped, std::size_t aSubdivs, Transform aPreTran
 	std::vector<std::vector<Vec3f>> vertNormalsList;
 	vertNormalsList.resize(pos.size());
 
-	for (int i = 0; i < pos.size(); i+=3) {
+	for (size_t i = 0; i < pos.size(); i+=3) {
 		Vec3f normal = CalculateNormal(pos[i], pos[i + 1], pos[i + 2]);
 
 		vertNormalsList[i].emplace_back(normal);
@@ -80,11 +80,10 @@ ModelObject MakeCylinder( bool aCapped, std::size_t aSubdivs, Transform aPreTran
 		vertNormalsList[i + 2].emplace_back(normal);
 	}
 
-	for( int i = 0; i < vertNormalsList.size(); i++ )
+	for( size_t i = 0; i < vertNormalsList.size(); i++ )
 	{
 		Vec3f sum = { 0.f, 0.f, 0.f };
-		Vec3f denom = { 0.f, 0.f, 0.f };
-		for( int j = 0; j < vertNormalsList[i].size(); j++ )
+		for( size_t j = 0; j < vertNormalsList[i].size(); j++ )
 		{
 			sum += vertNormalsList[i][j];
 		}
@@ -111,7 +110,7 @@ ModelObject MakeCone( bool aCapped, std::size_t aSubdivs, Transform aPreTransfor
 	float prevY = std::cos( 0.f ); // 1
 	float prevZ = std::sin( 0.f ); // 0
 
-	for( std::size_t i = 0; i < aSubdivs; ++i )
+	for( size_t i = 0; i < aSubdivs; ++i )
 	{
 		float const angle = (i+1) / float(aSubdivs) * 2.f * std::numbers::pi_v<float>;
 		float y = std::cos( angle );
@@ -147,7 +146,7 @@ ModelObject MakeCone( bool aCapped, std::size_t aSubdivs, Transform aPreTransfor
 	std::vector<std::vector<Vec3f>> vertNormalsList;
 	vertNormalsList.resize(pos.size());
 
-	for (int i = 0; i < pos.size(); i+=3) {
+	for (size_t i = 0; i < pos.size(); i+=3) {
 		Vec3f normal = CalculateNormal(pos[i], pos[i + 1], pos[i + 2]);
 
 		vertNormalsList[i].emplace_back(normal);
@@ -155,11 +154,10 @@ ModelObject MakeCone( bool aCapped, std::size_t aSubdivs, Transform aPreTransfor
 		vertNormalsList[i + 2].emplace_back(normal);
 	}
 
-	for( int i = 0; i < vertNormalsList.size(); i++ )
+	for( size_t i = 0; i < vertNormalsList.size(); i++ )
 	{
 		Vec3f sum = { 0.f, 0.f, 0.f };
-		Vec3f denom = { 0.f, 0.f, 0.f };
-		for( int j = 0; j < vertNormalsList[i].size(); j++ )
+		for( size_t j = 0; j < vertNormalsList[i].size(); j++ )
 		{
 			sum += vertNormalsList[i][j];
 		}
@@ -243,7 +241,7 @@ ModelObject MakeCube(Transform aPreTransform, ShapeMaterial aMaterial)
 	std::vector<std::vector<Vec3f>> vertNormalsList;
 	vertNormalsList.resize(pos.size());
 
-	for (int i = 0; i < pos.size(); i+=3) {
+	for (size_t i = 0; i < pos.size(); i+=3) {
 		Vec3f normal = CalculateNormal(pos[i], pos[i + 1], pos[i + 2]);
 
 		normals.emplace_back(normal);

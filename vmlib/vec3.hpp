@@ -169,7 +169,7 @@ Vec3f square(Vec3f aVec) noexcept
 inline
 Vec3f sqrt(Vec3f aVec) noexcept
 {
-	return {sqrt(aVec[0]), sqrt(aVec[1]), sqrt(aVec[2]) };
+	return {float(sqrt(aVec[0])), float(sqrt(aVec[1])), float(sqrt(aVec[2])) };
 }
 
 #endif // VEC3_HPP_5710DADF_17EF_453C_A9C8_4A73DC66B1CD

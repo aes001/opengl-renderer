@@ -33,9 +33,9 @@ void ParticleSource::UpdateParticles(float dt)
 
 	if (mActive)
 	{
-		for (int i = 0; i < mParticles.size() && spawned < mParams.spawnRate; i++) {
+		for (size_t i = 0; i < mParticles.size() && spawned < mParams.spawnRate; i++) {
 
-			for (int j = 0; j < mParticles.size(); j++) {
+			for (size_t j = 0; j < mParticles.size(); j++) {
 
 				if (mParticles[j].life <= 0) {
 					SpawnParticle(j, mParams.spread);
@@ -49,7 +49,7 @@ void ParticleSource::UpdateParticles(float dt)
 	
 
 		//update living particles
-		for (int i = 0; i < mParticles.size(); i++) 
+		for (size_t i = 0; i < mParticles.size(); i++) 
 		{
 			mParticles[i].life -= dt;
 			if (mParticles[i].life > 0) 
@@ -70,7 +70,7 @@ std::vector<Particle> ParticleSource::GetParticles()
 
 void ParticleSource::DeleteParticles()
 {
-	for (int i = 0; i < mParticles.size(); i++) 
+	for (size_t i = 0; i < mParticles.size(); i++) 
 	{
 		mParticles[i].life = 0;
 	}

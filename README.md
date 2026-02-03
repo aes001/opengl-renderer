@@ -10,11 +10,15 @@ Note that **this project does not support out of source builds**, so please run 
 ### Requirements
 - C++23 compatible compiler (We've tested this project with MSVC and GCC)
 
+Clone the repo
+``` BASH
+git clone https://github.com/aes001/opengl-renderer.git
+```
+and then go into the project directory
 #### Building on Windows
 
 Visual Studio 2022 or newer is required to build this project on Windows.
 ``` PowerShell
-git clone https://github.com/aes001/opengl-renderer.git
 .\premake5 vs2022
 .\COMP3811-glcode.sln
 ```
@@ -22,8 +26,7 @@ Then build the solution in Visual Studio.
 
 #### Building on Linux
 ``` BASH
-git clone https://github.com/aes001/opengl-renderer.git
-../premake5 gmake
+./premake5 gmake
 make
 ```
 
